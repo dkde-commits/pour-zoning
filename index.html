@@ -221,6 +221,7 @@ button.link{border:0;padding:6px 0 0;color:var(--accent);text-decoration:underli
       <div><label for="minCut">최소 절단 가능 폭 (m)</label><input id="minCut" type="number" step="0.05" min="0" value="0.3"></div>
       <div><label for="cantMin">캔틸레버로 보는 내민 길이 (m)</label><input id="cantMin" type="number" step="0.05" min="0" value="0.3"></div>
       <div><label for="gridTol">기둥 그리드 묶는 오차 (m)</label><input id="gridTol" type="number" step="0.05" min="0" value="0.3"></div>
+      <div><label for="minWallT">구조벽으로 볼 최소 두께 (m)</label><input id="minWallT" type="number" step="0.05" min="0" value="0.2"></div>
       <div><label for="restarts">대안 탐색 횟수</label><input id="restarts" type="number" step="10" min="10" max="500" value="120"></div>
     </div>
     <label class="check"><input id="cantExt" type="checkbox"><span>캔틸레버를 안쪽 절단선의 연장선으로 나누는 것 허용 — 규칙 4와 다른 예외 설정입니다. 켜기 전에 구조기술자 확인이 필요합니다.</span></label>
@@ -345,6 +346,12 @@ function analyze(inp) {
     if (Math.abs(p[0] - q[0]) > TOL && Math.abs(p[1] - q[1]) > TOL) { W.push('슬래브 외곽선에 사선 변이 있어 계단 모양으로 근사했습니다.'); break; }
   }
   const r = inp.ratio, m = inp.mult;
+  // 구조벽만 반영: 기준보다 얇은 벽(칸막이·건식벽)은 절단 판정에서 제외한다
+  const minWallT = inp.minWallT > 0 ? inp.minWallT : 0.2;
+  const allWalls = (inp.walls || []).map(normRect);
+  const walls = allWalls.filter(w => Math.min(w[2] - w[0], w[3] - w[1]) >= minWallT - 1e-9);
+  const openings = (inp.openings || []).map(normRect);
+  if (allWalls.length - walls.length) W.push(`두께 ${minWallT} m 미만인 벽 ${allWalls.length - walls.length}개는 칸막이벽으로 보고 제외했습니다.`);
   // 기둥 좌표가 조금씩 어긋난 모델에서 그리드선이 수십 개로 쪼개지지 않도록 묶는 허용오차
   const gtol = inp.gridTol > 0 ? inp.gridTol : 0.3;
   const cluster = (vals) => {
@@ -446,7 +453,7 @@ function analyze(inp) {
   const by0 = Math.min(...poly.map(p => p[1])), by1 = Math.max(...poly.map(p => p[1]));
   let X = [...xs, ...cutX.map(c => c.pos), ...poly.map(p => p[0])], Y = [...ys, ...cutY.map(c => c.pos), ...poly.map(p => p[1])];
   for (const b of beams) { if (b.o === 'v') { X.push(b.c); Y.push(b.a, b.b); } else { Y.push(b.c); X.push(b.a, b.b); } }
-  for (const rc of [...inp.walls, ...inp.openings]) { X.push(rc[0], rc[2]); Y.push(rc[1], rc[3]); }
+  for (const rc of [...walls, ...openings]) { X.push(rc[0], rc[2]); Y.push(rc[1], rc[3]); }
   X = uniqSorted(X.filter(v => v >= bx0 - EPS && v <= bx1 + EPS), 0.005);
   Y = uniqSorted(Y.filter(v => v >= by0 - EPS && v <= by1 + EPS), 0.005);
   const nx = X.length - 1, ny = Y.length - 1, idx = (i, j) => j * nx + i;
@@ -456,8 +463,9 @@ function analyze(inp) {
     const cx = (X[i] + X[i + 1]) / 2, cy = (Y[j] + Y[j + 1]) / 2, k = idx(i, j);
     if (!pip(cx, cy, poly)) continue;
     inPoly[k] = 1;
-    if (inp.walls.some(rc => inRect(cx, cy, rc))) { blockKind[k] = 1; continue; }
-    if (inp.openings.some(rc => inRect(cx, cy, rc))) { blockKind[k] = 2; continue; }
+    if (openings.some(rc => inRect(cx, cy, rc))) { blockKind[k] = 2; continue; }
+    // 벽 자리에도 슬래브는 이어져 있다. 잘라내지 않고 "절단 불가" 표시만 한다
+    if (walls.some(rc => inRect(cx, cy, rc))) blockKind[k] = 1;
     active[k] = 1; totalArea += (X[i + 1] - X[i]) * (Y[j + 1] - Y[j]);
   }
   // 규칙 4: 받치는 보가 한쪽에만 있는(자유단이 있는) 영역 = 캔틸레버
@@ -506,10 +514,11 @@ function analyze(inp) {
     const A = idx(i - 1, j), B = idx(i, j), x = X[i];
     if (!inPoly[A] || !inPoly[B]) continue;
     const cand = isCutX(x);
-    if (!active[A] || !active[B]) { if (cand) edges.push({ x1: x, y1: Y[j], x2: x, y2: Y[j + 1], A: -1, B: -1, ok: false, why: 'wall', cand, len: Y[j + 1] - Y[j] }); continue; }
+    if (!active[A] || !active[B]) { if (cand) edges.push({ x1: x, y1: Y[j], x2: x, y2: Y[j + 1], A: -1, B: -1, ok: false, why: 'open', cand, len: Y[j + 1] - Y[j] }); continue; }
     let ok = false, why = 'grid';
     if (cand) {
-      if ((cantCell[A] || cantCell[B]) && !inp.cantExt) why = 'cant';
+      if (blockKind[A] === 1 || blockKind[B] === 1) why = 'wall';
+      else if ((cantCell[A] || cantCell[B]) && !inp.cantExt) why = 'cant';
       else { const w1 = nodeBad(x, Y[j], 'v') || nodeBad(x, Y[j + 1], 'v'); if (w1) why = w1; else { ok = true; why = ''; } }
     }
     edges.push({ x1: x, y1: Y[j], x2: x, y2: Y[j + 1], A, B, ok, why, cand, len: Y[j + 1] - Y[j] });
@@ -518,10 +527,11 @@ function analyze(inp) {
     const A = idx(i, j - 1), B = idx(i, j), y = Y[j];
     if (!inPoly[A] || !inPoly[B]) continue;
     const cand = isCutY(y);
-    if (!active[A] || !active[B]) { if (cand) edges.push({ x1: X[i], y1: y, x2: X[i + 1], y2: y, A: -1, B: -1, ok: false, why: 'wall', cand, len: X[i + 1] - X[i] }); continue; }
+    if (!active[A] || !active[B]) { if (cand) edges.push({ x1: X[i], y1: y, x2: X[i + 1], y2: y, A: -1, B: -1, ok: false, why: 'open', cand, len: X[i + 1] - X[i] }); continue; }
     let ok = false, why = 'grid';
     if (cand) {
-      if ((cantCell[A] || cantCell[B]) && !inp.cantExt) why = 'cant';
+      if (blockKind[A] === 1 || blockKind[B] === 1) why = 'wall';
+      else if ((cantCell[A] || cantCell[B]) && !inp.cantExt) why = 'cant';
       else { const w1 = nodeBad(X[i], y, 'h') || nodeBad(X[i + 1], y, 'h'); if (w1) why = w1; else { ok = true; why = ''; } }
     }
     edges.push({ x1: X[i], y1: y, x2: X[i + 1], y2: y, A, B, ok, why, cand, len: X[i + 1] - X[i] });
@@ -566,7 +576,7 @@ function analyze(inp) {
     for (let q = 0; q < list.length; q++) for (const [v] of units[list[q]].nb) if (comp[v] < 0) { comp[v] = comps.length; list.push(v); }
     comps.push(list);
   }
-  const why = { mid: 0, jn: 0, cant: 0, wall: 0 }; let okN = 0, ngN = 0;
+  const why = { mid: 0, jn: 0, cant: 0, wall: 0, open: 0 }; let okN = 0, ngN = 0;
   for (const e of edges) if (e.cand) { if (e.ok) okN++; else { ngN++; if (why[e.why] !== undefined) why[e.why]++; } }
   const maxUnit = units.reduce((a, u, i) => u.vol > units[a].vol ? i : a, 0);
   // 조각마다 모서리 꼭짓점 목록 (꺾임 검사용)
@@ -581,7 +591,7 @@ function analyze(inp) {
   return {
     E, W, poly, xs, ys, cs, beams, gtol, lines, cutX, cutY, X, Y, nx, ny, inPoly, active, blockKind, cantCell, edges, unitOf, units, comps,
     totalArea, C, Cgiven: inp.C > 0, Nmin: Math.ceil(C / inp.P - 1e-9), maxUnit, onBeam,
-    stats: { okN, ngN, why }, walls: inp.walls, openings: inp.openings, P: inp.P
+    stats: { okN, ngN, why }, walls, openings, P: inp.P
   };
 }
 
@@ -1227,7 +1237,8 @@ const IFCReader = (() => {
     const gcache = new Map();
     const G = id => { if (!gcache.has(id)) { let g = null; try { g = geom(id); } catch (e) { g = null; } gcache.set(id, g); } return gcache.get(id); };
 
-    function extract(storeyId) {
+    function extract(storeyId, opts) {
+      const minWallT = (opts && opts.minWallT > 0) ? opts.minWallT : 0.2;
       const W = [];
       const inStorey = (contained.get(storeyId) || []);
       const st = storeys.find(s => s.id === storeyId);
@@ -1302,15 +1313,17 @@ const IFCReader = (() => {
         }
       }
       // 4) 벽: 슬래브 높이에 걸치는 직선 벽 → 사각형
-      const walls = []; let skipW = 0;
+      const walls = []; let skipW = 0, thinW = 0;
       for (const w of allOf('wall')) {
         const g = G(w); if (!g || !inBox(g)) continue;
         if (g.max[2] < zBot - 0.05 || g.min[2] > zTop + 0.05) continue;
         const dx = g.max[0] - g.min[0], dy = g.max[1] - g.min[1];
         if (Math.min(dx, dy) > 1.0) { skipW++; continue; }
+        if (Math.min(dx, dy) < minWallT) { thinW++; continue; }
         walls.push([g.min[0], g.min[1], g.max[0], g.max[1]]);
       }
       if (skipW) W.push(`사선·곡선 벽 ${skipW}개는 제외했습니다.`);
+      if (thinW) W.push(`두께 ${minWallT} m 미만인 칸막이벽 ${thinW}개는 제외했습니다(구조벽만 반영).`);
       // 좌표를 슬래브 좌하단 기준으로 옮기고 mm 단위로 반올림
       const ox = Math.min(...poly.map(p => p[0])), oy = Math.min(...poly.map(p => p[1]));
       const r3 = v => Math.round(v * 1000) / 1000;
@@ -1359,7 +1372,7 @@ function fill(o) {
   $('#slab').value = rowsText(o.slab); $('#columns').value = rowsText(o.columns);
   $('#beams').value = rowsText(o.beams); $('#walls').value = rowsText(o.walls); $('#openings').value = rowsText(o.openings);
   set('t', o.t); $('#C').value = o.C > 0 ? o.C : ''; set('P', o.P); if (o.N !== undefined) $('#N').value = o.N > 0 ? o.N : '';
-  if (o.ratio !== undefined) $('#ratio').value = o.ratio; set('mult', o.mult); set('defW', o.defW); set('minCut', o.minCut); set('cantMin', o.cantMin); set('gridTol', o.gridTol);
+  if (o.ratio !== undefined) $('#ratio').value = o.ratio; set('mult', o.mult); set('defW', o.defW); set('minCut', o.minCut); set('cantMin', o.cantMin); set('gridTol', o.gridTol); set('minWallT', o.minWallT);
   if (o.cantExt !== undefined) $('#cantExt').checked = !!o.cantExt;
 }
 function parseRows(text, n, label, errs) {
@@ -1385,7 +1398,7 @@ function readInputs() {
     walls: parseRows($('#walls').value, 4, '벽', errs).map(normRect),
     openings: parseRows($('#openings').value, 4, '개구부', errs).map(normRect),
     t: num('t'), C: num('C'), P: num('P'), N: num('N'),
-    ratio: parseRatio($('#ratio').value), mult: num('mult'), defW: num('defW'), minCut: num('minCut'), cantMin: num('cantMin'), gridTol: num('gridTol'),
+    ratio: parseRatio($('#ratio').value), mult: num('mult'), defW: num('defW'), minCut: num('minCut'), cantMin: num('cantMin'), gridTol: num('gridTol'), minWallT: num('minWallT'),
     restarts: Math.max(10, Math.min(500, num('restarts') || 120)), cantExt: $('#cantExt').checked
   };
   if (!(inp.P > 0)) errs.push('1일 최대 타설량 P를 0보다 큰 값으로 입력하세요.');
@@ -1396,6 +1409,7 @@ function readInputs() {
   if (!(inp.minCut >= 0)) inp.minCut = 0.3;
   if (!(inp.cantMin >= 0)) inp.cantMin = 0.3;
   if (!(inp.gridTol >= 0)) inp.gridTol = 0.3;
+  if (!(inp.minWallT >= 0)) inp.minWallT = 0.2;
   if (!(inp.t > 0)) inp.t = 0;
   return { inp, errs };
 }
@@ -1612,7 +1626,8 @@ function basisRows(M) {
     ['절단 가능 (규칙 1·2 충족)', M.stats.okN, SRC.ok],
     ['불가: 가운데 구간 밖 (규칙 1)', w.mid, SRC.mid],
     ['불가: 작은보 접합부 이격 부족 (규칙 2)', w.jn, SRC.jn],
-    ['불가: 벽·개구부 관통 (규칙 3)', w.wall, SRC.wall],
+    ['불가: 구조벽 통과 (규칙 3)', w.wall, SRC.wall],
+    ['불가: 개구부 통과 (규칙 3)', w.open || 0, SRC.wall],
     ['불가: 캔틸레버 (규칙 4)', w.cant, SRC.cant],
     ['제외된 배정: 보 위가 아닌 꺾임 (규칙 3)', R ? R.bentN : 0, SRC.bend],
     ['절단선: 그리드와 나란한 직선만 (규칙 5)', '전체 적용', SRC.line],
@@ -1713,7 +1728,7 @@ function csvText() {
 }
 function inputJSON() {
   const { inp } = readInputs();
-  const o = { project: inp.project, floor: inp.floor, slab: inp.slab, t: inp.t, C: isFinite(inp.C) ? inp.C : null, columns: inp.columns, beams: inp.beams, walls: inp.walls, openings: inp.openings, P: inp.P, N: isFinite(inp.N) ? inp.N : null, ratio: $('#ratio').value, mult: inp.mult, defW: inp.defW, minCut: inp.minCut, cantMin: inp.cantMin, gridTol: inp.gridTol, cantExt: inp.cantExt };
+  const o = { project: inp.project, floor: inp.floor, slab: inp.slab, t: inp.t, C: isFinite(inp.C) ? inp.C : null, columns: inp.columns, beams: inp.beams, walls: inp.walls, openings: inp.openings, P: inp.P, N: isFinite(inp.N) ? inp.N : null, ratio: $('#ratio').value, mult: inp.mult, defW: inp.defW, minCut: inp.minCut, cantMin: inp.cantMin, gridTol: inp.gridTol, minWallT: inp.minWallT, cantExt: inp.cantExt };
   return JSON.stringify(o, null, 1);
 }
 function download(name, text, type) {
@@ -1790,7 +1805,7 @@ $('#ifcSample').addEventListener('click', () => loadIFCText(SAMPLE_IFC, '예제_
 $('#ifcRun').addEventListener('click', () => {
   if (!IFCM) return;
   try {
-    const r = IFCM.extract(+$('#storey').value);
+    const r = IFCM.extract(+$('#storey').value, { minWallT: num('minWallT') > 0 ? num('minWallT') : 0.2 });
     fill({ project: r.project, floor: r.floor, slab: r.slab, t: r.t, C: r.C, columns: r.columns, beams: r.beams, walls: r.walls, openings: r.openings });
     ifcStatus(`${esc(r.floor)}: 기둥 ${r.columns.length}, 보 ${r.beams.length}, 벽 ${r.walls.length}, 개구부 ${r.openings.length}개를 찾았습니다. 타설량 ${f1(r.info.slabVol)}(슬래브) + ${f1(r.info.beamVol)}(슬래브 아래 보) = ${f1(r.C)} ㎥.` + (r.W.length ? '<br>' + r.W.map(esc).join('<br>') : ''), 'ok');
     run();
