@@ -6,141 +6,193 @@
 <title>타설구획 자동 분할</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --paper:#E9EDEB; --sheet:#FBFCFB; --ink:#1D2A30; --muted:#586A70; --rule:#C2CBC9; --field:#FFFFFF;
-  --accent:#1F5E78; --accent-ink:#FFFFFF; --ok:#2E8B57; --ng:#C8423B; --warn:#9A6212;
-  --girder:#D9804F; --beam:#E4B84A; --wall:#5E4B86; --col:#1D2A30; --cell:#DDE3E1;
+  --paper:#F2F4F6; --sheet:#FFFFFF; --card:#FFFFFF; --ink:#16191C; --muted:#6B7684; --rule:#E5E8EB; --field:#F7F8FA;
+  --accent:#0C7C59; --accent-soft:#E7F4EE; --accent-ink:#FFFFFF;
+  --ok:#0C7C59; --ok-soft:#E7F4EE; --ng:#D6373B; --ng-soft:#FDECEC; --warn:#B26C00; --warn-soft:#FFF4E0;
+  --girder:#D9804F; --beam:#E0B23F; --wall:#5E4B86; --col:#16191C; --cell:#E8ECEF;
+  --shadow:0 1px 2px rgba(22,25,28,.05), 0 8px 24px rgba(22,25,28,.06);
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
-  font-family:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+  font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --paper:#141A1D; --sheet:#1B2327; --ink:#E3EAEA; --muted:#98A8AB; --rule:#33434A; --field:#11171A;
-    --accent:#72B6D1; --accent-ink:#0E191E; --ok:#5BC08A; --ng:#EE7A73; --warn:#E3AE5A; --cell:#2A3438; --col:#E3EAEA;
-    color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --paper:#141A1D; --sheet:#1B2327; --ink:#E3EAEA; --muted:#98A8AB; --rule:#33434A; --field:#11171A;
-  --accent:#72B6D1; --accent-ink:#0E191E; --ok:#5BC08A; --ng:#EE7A73; --warn:#E3AE5A; --cell:#2A3438; --col:#E3EAEA;
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0F1214; --sheet:#181C1F; --card:#181C1F; --ink:#EDF0F2; --muted:#9BA6B0; --rule:#2A3136; --field:#12171A;
+  --accent:#2FBF8F; --accent-soft:#12312A; --accent-ink:#06120D;
+  --ok:#2FBF8F; --ok-soft:#12312A; --ng:#FF7B7E; --ng-soft:#3A1E1F; --warn:#F0B24B; --warn-soft:#3A2D14;
+  --cell:#262D32; --col:#EDF0F2; --shadow:0 1px 2px rgba(0,0,0,.4);
   color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#0F1214; --sheet:#181C1F; --card:#181C1F; --ink:#EDF0F2; --muted:#9BA6B0; --rule:#2A3136; --field:#12171A;
+  --accent:#2FBF8F; --accent-soft:#12312A; --accent-ink:#06120D;
+  --ok:#2FBF8F; --ok-soft:#12312A; --ng:#FF7B7E; --ng-soft:#3A1E1F; --warn:#F0B24B; --warn-soft:#3A2D14;
+  --cell:#262D32; --col:#EDF0F2; color-scheme:dark;
 }
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:inherit}
-body{margin:0;background:var(--paper);color:var(--ink);font-size:15px;line-height:1.55;font-variant-numeric:tabular-nums}
-h1,h2,h3{margin:0;line-height:1.25}
-.top{padding:28px clamp(16px,4vw,40px) 18px;border-bottom:2px solid var(--ink);display:flex;flex-wrap:wrap;gap:8px 32px;align-items:end;justify-content:space-between}
-.top h1{font-size:clamp(24px,4.2vw,34px);font-weight:700;letter-spacing:-.02em}
-.top p{margin:6px 0 0;color:var(--muted);max-width:60ch}
-.spec{font-size:13px;color:var(--muted);text-align:right}
-.layout{display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:0;min-height:70vh}
-@media (max-width:920px){.layout{grid-template-columns:1fr}}
-.panel{border-right:1px solid var(--rule);padding:18px clamp(16px,3vw,24px) 40px;background:var(--paper)}
-@media (max-width:920px){.panel{border-right:0;border-bottom:1px solid var(--rule)}}
-fieldset{border:0;margin:0 0 18px;padding:0}
-legend{font-weight:600;font-size:15px;padding:0;margin-bottom:8px;display:flex;gap:8px;align-items:baseline}
-legend .n{display:inline-grid;place-items:center;width:22px;height:22px;border:1.5px solid var(--ink);border-radius:50%;font-size:12px;font-weight:600}
-label{display:block;font-size:13px;color:var(--muted);margin:8px 0 3px}
-label b{color:var(--ink);font-weight:500}
-input[type=text],input[type=number],textarea{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--field);border:1px solid var(--rule);border-radius:4px;padding:7px 9px}
-textarea{min-height:84px;resize:vertical;font-size:13px;line-height:1.45}
-input:focus-visible,textarea:focus-visible,button:focus-visible,summary:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
-.check{display:flex;gap:8px;align-items:flex-start;color:var(--ink);font-size:13px;margin-top:10px}
-.check input{margin-top:3px}
-.hint{font-size:12px;color:var(--muted);margin:3px 0 0}
-.actions{position:sticky;bottom:0;background:var(--paper);padding:12px 0 calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--rule)}
-button{font:inherit;font-size:14px;border-radius:4px;padding:9px 14px;cursor:pointer;border:1px solid var(--ink);background:transparent;color:var(--ink)}
-button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600;flex:1 1 auto}
-button:disabled{opacity:.5;cursor:wait}
-details{border-top:1px solid var(--rule);padding:10px 0}
-details summary{cursor:pointer;font-weight:500;font-size:14px}
-details ol{padding-left:20px;margin:8px 0 0;font-size:13px}
-details li{margin-bottom:4px}
-.result{padding:18px clamp(16px,3vw,32px) 48px;min-width:0}
-.msg{border-left:4px solid var(--muted);padding:8px 12px;margin:0 0 14px;background:var(--sheet);font-size:14px}
-.msg.err{border-color:var(--ng)} .msg.warn{border-color:var(--warn)} .msg.ok{border-color:var(--ok)}
-.msg p{margin:2px 0}
-.empty{border:1.5px dashed var(--rule);padding:40px 20px;text-align:center;color:var(--muted)}
-.layers{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;margin:0 0 10px}
-.layers label{display:flex;gap:6px;align-items:center;margin:0;color:var(--ink)}
-.sheet{background:var(--sheet);border:2px solid var(--ink);padding:10px}
-.drawing{overflow-x:auto}
-.drawing svg{display:block;width:100%;height:auto;max-height:80vh}
-.titleblock{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);border-top:2px solid var(--ink);margin-top:10px}
-@media (max-width:640px){.titleblock{grid-template-columns:1fr}}
-.tb-name{padding:10px 12px;border-right:1px solid var(--ink)}
-@media (max-width:640px){.tb-name{border-right:0;border-bottom:1px solid var(--ink)}}
-.tb-name h2{font-size:20px;font-weight:700}
-.tb-name .sub{color:var(--muted);font-size:13px;margin-top:2px}
-.tb-facts{display:grid;grid-template-columns:1fr 1fr;margin:0}
-.tb-facts div{padding:7px 12px;border-bottom:1px solid var(--rule)}
-.tb-facts dt{font-size:12px;color:var(--muted)} .tb-facts dd{margin:0;font-weight:600;font-size:16px}
-.tablewrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:14px}
-th,td{padding:7px 10px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
-th{font-weight:500;color:var(--muted);font-size:12.5px}
-th:first-child,td:first-child{text-align:left}
-.sw{display:inline-block;width:12px;height:12px;border:1px solid var(--ink);vertical-align:-1px;margin-right:6px}
-.over{color:var(--ng);font-weight:600}
-h3{font-size:16px;font-weight:600;margin:26px 0 8px}
-.alts tr{cursor:pointer} .alts tr.sel td{background:color-mix(in srgb,var(--accent) 14%,transparent)}
-.alts tbody tr:hover td{background:color-mix(in srgb,var(--accent) 7%,transparent)}
-.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:8px}
-.legend span{display:inline-flex;gap:5px;align-items:center}
-.legend i{display:inline-block;width:18px;height:0;border-top:3px solid}
-.exports{display:flex;flex-wrap:wrap;gap:8px}
-.exports textarea{min-height:120px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
-.cand-h{margin-top:4px}
-.cands{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:8px 0 14px}
-@media (max-width:480px){.cands{grid-template-columns:1fr 1fr;gap:8px}}
-@media (max-width:640px){#altTable{display:none}}
-.cand{display:flex;flex-direction:column;gap:4px;text-align:left;padding:8px;border:1.5px solid var(--rule);border-radius:4px;background:var(--sheet);color:var(--ink);font-size:12.5px;line-height:1.35}
-.cand:hover{border-color:var(--accent)}
-.cand[aria-pressed="true"]{border:2px solid var(--accent);padding:7.5px;box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
-.cand svg{width:100%;height:auto;display:block;aspect-ratio:4/3;background:var(--paper);border-radius:2px}
-.cand .ct{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:14px}
-.cand .ct small{font-weight:500;color:var(--muted);font-size:12px}
-.cand .cm{color:var(--muted)}
-.cand .tags{display:flex;flex-wrap:wrap;gap:3px}
-.cand .tags span{font-size:11px;padding:1px 5px;border-radius:3px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--ink)}
-.cand .tags span.day{background:color-mix(in srgb,var(--warn) 22%,transparent)}
-.zoomwrap{position:relative}
-.zoomctl{position:absolute;top:8px;right:8px;display:flex;flex-direction:column;gap:4px;z-index:2}
-.zoomctl button{width:38px;height:34px;padding:0;font-size:16px;font-weight:600;background:var(--sheet);border-color:var(--rule);box-shadow:0 1px 3px rgba(0,0,0,.12)}
-.zoomctl button:last-child{font-size:12px}
-.drawing{touch-action:none;cursor:grab}
-.drawing.drag{cursor:grabbing}
-.zoomhint{margin:4px 0 0}
-.layers label.off{opacity:.45}
-.basis{margin-top:10px}
-.basis table{font-size:12.5px}
-.basis td,.basis th{text-align:left;white-space:normal}
-.basis td:nth-child(2){text-align:right;white-space:nowrap}
-.basis .src{color:var(--muted)}
-.inline-btn{margin-left:6px;padding:3px 10px;font-size:13px;border-color:var(--accent);color:var(--accent)}
-.foot{font-size:12px;color:var(--muted);margin-top:28px;max-width:75ch}
+body{margin:0;background:var(--paper);color:var(--ink);font-size:15px;line-height:1.6;letter-spacing:-.01em;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;line-height:1.3;letter-spacing:-.02em}
 
-.upload{border:2px solid var(--ink);background:var(--sheet);padding:14px 14px 12px;margin:0 0 14px}
-.upload h2{font-size:17px;font-weight:700}
-.upload .hint{margin:4px 0 10px}
-.drop{display:grid;gap:2px;place-items:center;text-align:center;border:1.5px dashed var(--accent);border-radius:4px;padding:20px 10px;cursor:pointer;margin:0;color:var(--ink);background:color-mix(in srgb,var(--accent) 5%,transparent)}
-.drop.over{background:color-mix(in srgb,var(--accent) 16%,transparent)}
-.drop-main{font-weight:600;font-size:16px;color:var(--accent)}
+/* 상단 바 */
+.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--sheet) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);
+  padding:calc(14px + env(safe-area-inset-top,0px)) clamp(16px,4vw,32px) 14px;display:flex;gap:10px 24px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.top h1{font-size:19px;font-weight:700;display:flex;align-items:center;gap:8px}
+.top h1::before{content:"";width:22px;height:22px;border-radius:7px;background:var(--accent);box-shadow:inset 0 0 0 3px var(--sheet), 0 0 0 1px var(--accent)}
+.top p{margin:3px 0 0;color:var(--muted);font-size:13px;max-width:62ch}
+.spec{font-size:12px;color:var(--muted);background:var(--field);border-radius:999px;padding:5px 12px}
+
+@media (max-width:640px){.top{padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px}.top p,.spec{display:none}}
+.layout{display:grid;grid-template-columns:minmax(320px,400px) minmax(0,1fr);gap:20px;padding:20px clamp(12px,3vw,28px) 60px;align-items:start;max-width:1560px;margin:0 auto}
+@media (max-width:980px){.layout{grid-template-columns:1fr;gap:14px;padding-bottom:110px}}
+.panel{display:flex;flex-direction:column;gap:12px;min-width:0}
+.result{display:flex;flex-direction:column;gap:14px;min-width:0}
+
+/* 카드 */
+fieldset,.upload,.sheet,#zoneBlock,#altBlock,.exportcard{background:var(--card);border:1px solid var(--rule);border-radius:16px;box-shadow:var(--shadow)}
+fieldset{border:1px solid var(--rule);margin:0;padding:16px 16px 18px}
+legend{font-weight:700;font-size:15px;padding:0;margin:0 0 2px;display:flex;gap:8px;align-items:center}
+legend .n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:8px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700}
+label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px;font-weight:500}
+label b{color:var(--ink);font-weight:600}
+input[type=text],input[type=number],textarea,select{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--field);border:1px solid transparent;border-radius:10px;padding:11px 12px;transition:border-color .12s,background .12s}
+input[type=text]:hover,input[type=number]:hover,textarea:hover,select:hover{background:color-mix(in srgb,var(--field) 60%,var(--card))}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);background:var(--card);box-shadow:0 0 0 3px var(--accent-soft)}
+textarea{min-height:92px;resize:vertical;font-size:13px;line-height:1.5;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.check{display:flex;gap:9px;align-items:flex-start;color:var(--ink);font-size:13px;margin-top:12px;line-height:1.5}
+.check input{margin-top:3px;accent-color:var(--accent);width:17px;height:17px}
+.hint{font-size:12.5px;color:var(--muted);margin:6px 0 0;line-height:1.55}
+
+/* 버튼 */
+button{font:inherit;font-size:14px;font-weight:600;border-radius:12px;padding:11px 16px;cursor:pointer;border:1px solid var(--rule);background:var(--card);color:var(--ink);transition:transform .08s,background .12s,border-color .12s}
+button:hover{background:var(--field)}
+button:active{transform:scale(.985)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+button.primary:hover{filter:brightness(1.07)}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+button:focus-visible,summary:focus-visible,label:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.actions{position:sticky;bottom:0;z-index:15;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(6px);padding:12px 0 calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:8px}
+.actions .primary{flex:1;padding:14px 16px;font-size:15px}
+@media (max-width:980px){.actions{position:fixed;left:0;right:0;bottom:0;padding:10px clamp(12px,3vw,28px) calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--rule);background:var(--card)}}
+
+details{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow)}
+details summary{cursor:pointer;font-weight:600;font-size:14px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"＋";color:var(--muted);font-weight:400}
+details[open] summary::after{content:"－"}
+details ol{padding-left:18px;margin:10px 0 0;font-size:13px;color:var(--muted)}
+details li{margin-bottom:6px}
+details li::marker{color:var(--accent)}
+
+/* 업로드 카드 */
+.upload{padding:18px}
+.upload h2{font-size:16px;font-weight:700}
+.upload .hint{margin:6px 0 12px}
+.drop{display:grid;gap:3px;place-items:center;text-align:center;border:1.5px dashed color-mix(in srgb,var(--accent) 45%,var(--rule));border-radius:14px;padding:26px 12px;cursor:pointer;margin:0;background:var(--accent-soft);transition:background .12s,border-color .12s}
+.drop:hover,.drop.over{background:color-mix(in srgb,var(--accent) 14%,var(--card));border-color:var(--accent)}
+.drop-main{font-weight:700;font-size:15px;color:var(--accent)}
 .drop-sub{font-size:12px;color:var(--muted)}
 .vh{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-.ifc-status{font-size:13px;margin-top:8px}
-.ifc-status.err{color:var(--ng)} .ifc-status.ok{color:var(--ok)}
-.ifc-status ol{margin:6px 0 0;padding-left:18px;color:var(--ink)}
-select{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--field);border:1px solid var(--rule);border-radius:4px;padding:7px 9px}
+.ifc-status{font-size:13px;margin-top:10px;color:var(--muted);line-height:1.55}
+.ifc-status.err{color:var(--ng)} .ifc-status.ok{color:var(--ink)}
+.ifc-status ol{margin:8px 0 0;padding-left:18px}
 button.wide{width:100%;margin-top:10px}
-button.link{border:0;padding:6px 0 0;color:var(--accent);text-decoration:underline;font-size:13px}
-.or{font-size:12px;color:var(--muted);margin:0 0 14px}
-@media (prefers-reduced-motion:no-preference){.sheet.fresh{animation:land .45s ease-out}@keyframes land{from{opacity:.2;transform:translateY(6px)}to{opacity:1;transform:none}}}
+button.link{border:0;background:none;padding:8px 0 0;color:var(--accent);font-size:13px;font-weight:600}
+button.link:hover{background:none;text-decoration:underline}
+.or{font-size:12.5px;color:var(--muted);margin:2px 2px 0}
+
+/* 알림 */
+.msg{display:flex;gap:10px;align-items:flex-start;border-radius:14px;padding:12px 14px;margin:0 0 8px;font-size:14px;line-height:1.55;background:var(--field);border:1px solid var(--rule)}
+.msg .tag{flex:none;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.02em}
+.msg p{margin:0}
+.msg.err{background:var(--ng-soft);border-color:color-mix(in srgb,var(--ng) 25%,transparent)}
+.msg.err .tag{background:var(--ng);color:#fff}
+.msg.warn{background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 25%,transparent)}
+.msg.warn .tag{background:var(--warn);color:#fff}
+.msg.ok{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 22%,transparent)}
+.msg.ok .tag{background:var(--ok);color:#fff}
+.empty{background:var(--card);border:1px dashed var(--rule);border-radius:16px;padding:52px 24px;text-align:center;color:var(--muted)}
+
+/* 레이어 칩 */
+.layers{display:flex;flex-wrap:wrap;gap:8px;margin:0}
+.layers label{display:inline-flex;gap:7px;align-items:center;margin:0;padding:8px 14px;border-radius:999px;background:var(--card);border:1px solid var(--rule);font-size:13px;color:var(--ink);cursor:pointer;font-weight:500;transition:background .12s,border-color .12s}
+.layers label:has(input:checked){background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent);font-weight:700}
+.layers label.off{opacity:.4;cursor:not-allowed}
+.layers input{accent-color:var(--accent);width:15px;height:15px}
+
+/* 도면 */
+.sheet{padding:14px}
+.sheet.fresh{animation:pop .35s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.zoomwrap{position:relative}
+.drawing{overflow:hidden;border-radius:12px;background:var(--sheet);touch-action:none;cursor:grab}
+.drawing.drag{cursor:grabbing}
+.drawing svg{display:block;width:100%;height:auto;max-height:76vh}
+.zoomctl{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
+.zoomctl button{width:38px;height:36px;padding:0;font-size:17px;border-radius:11px;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(4px);box-shadow:var(--shadow)}
+.zoomctl button:last-child{font-size:12px;font-weight:700}
+.zoomhint{margin:8px 2px 0}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--rule)}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.legend i{display:inline-block;width:16px;height:0;border-top:3px solid;border-radius:2px}
+.titleblock{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.3fr);gap:14px;margin-top:14px;padding-top:14px;border-top:1px solid var(--rule)}
+@media (max-width:640px){.titleblock{grid-template-columns:1fr}}
+.tb-name h2{font-size:18px;font-weight:700}
+.tb-name .sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.tb-facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}
+.tb-facts div{padding:10px 12px;background:var(--field);border-radius:12px}
+.tb-facts dt{font-size:11.5px;color:var(--muted)}
+.tb-facts dd{margin:2px 0 0;font-weight:700;font-size:16px}
+
+/* 표 */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:11px 12px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
+thead th{font-weight:600;color:var(--muted);font-size:12px;border-bottom:1px solid var(--rule);background:var(--field)}
+thead th:first-child{border-radius:10px 0 0 10px}
+thead th:last-child{border-radius:0 10px 10px 0}
+th:first-child,td:first-child{text-align:left}
+tbody tr:last-child td{border-bottom:0}
+.sw{display:inline-block;width:12px;height:12px;border-radius:4px;vertical-align:-2px;margin-right:7px}
+.over{color:var(--ng);font-weight:700}
+h3{font-size:16px;font-weight:700;margin:2px 0 4px}
+#zoneBlock,#altBlock,.exportcard{padding:16px}
+#zoneBlock .hint{margin-bottom:6px}
+.alts tbody tr{cursor:pointer}
+.alts tbody tr.sel td{background:var(--accent-soft)}
+.alts tbody tr:hover td{background:var(--field)}
+@media (max-width:640px){#altTable{display:none}}
+
+/* 후보 카드 */
+.cand-h{display:flex;align-items:baseline;gap:8px}
+#candCount{font-size:13px;color:var(--accent);font-weight:700}
+.cands{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px;margin:10px 0 4px}
+@media (max-width:480px){.cands{grid-template-columns:1fr 1fr;gap:8px}}
+.cand{display:flex;flex-direction:column;gap:6px;text-align:left;padding:10px;border:1px solid var(--rule);border-radius:14px;background:var(--card);color:var(--ink);font-size:12.5px;line-height:1.45;font-weight:400}
+.cand:hover{border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:var(--card);box-shadow:var(--shadow)}
+.cand[aria-pressed="true"]{border:2px solid var(--accent);padding:9px;background:color-mix(in srgb,var(--accent-soft) 60%,var(--card))}
+.cand svg{width:100%;height:auto;display:block;aspect-ratio:4/3;background:var(--field);border-radius:9px}
+.cand .ct{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:14px}
+.cand .ct small{font-weight:500;color:var(--muted);font-size:11.5px}
+.cand .cm{color:var(--muted)}
+.cand .tags{display:flex;flex-wrap:wrap;gap:4px}
+.cand .tags span{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.cand .tags span.day{background:var(--warn-soft);color:var(--warn)}
+
+/* 판정 근거 */
+.basis{margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
+.basis table{font-size:12.5px}
+.basis td,.basis th{text-align:left;white-space:normal;padding:9px 10px}
+.basis td:nth-child(2){text-align:right;white-space:nowrap;font-weight:700}
+.basis .src{color:var(--muted);font-size:11.5px}
+.inline-btn{margin-left:8px;padding:5px 12px;font-size:12.5px;border-radius:999px;border-color:currentColor;background:var(--card)}
+.exports{display:flex;flex-wrap:wrap;gap:8px}
+.exports textarea{min-height:110px;margin-top:8px}
+.foot{font-size:12px;color:var(--muted);margin-top:14px;max-width:78ch;line-height:1.6}
 </style>
 </head>
 <body>
@@ -149,7 +201,7 @@ button.link{border:0;padding:6px 0 0;color:var(--accent);text-decoration:underli
     <h1>타설구획 자동 분할</h1>
     <p>Revit에서 내보낸 IFC 파일을 올리면 슬래브·기둥·보·벽을 읽어, 이음 규칙(KCS 14 20 10)에 맞게 하루에 칠 수 있는 구역으로 나눕니다.</p>
   </div>
-  <div class="spec">단위: m, ㎥ · 좌표는 평면 X(가로)·Y(세로)</div>
+  <div class="spec">단위 m · ㎥ &nbsp;|&nbsp; KCS 14 20 10 기준</div>
 </header>
 
 <div class="layout">
@@ -295,6 +347,7 @@ button.link{border:0;padding:6px 0 0;color:var(--accent);text-decoration:underli
       <p class="hint">구역별 이음 길이는 그 구역을 둘러싼 이음면 길이라, 이웃과 맞닿은 이음이 양쪽에 모두 들어갑니다. 합계는 중복을 뺀 실제 이음 길이입니다.</p>
       <div class="tablewrap"><table id="zoneTable"></table></div>
     </div>
+    <div class="exportcard">
     <h3>내보내기</h3>
     <div class="exports">
       <button type="button" id="dlCsv">구역표 CSV 저장</button>
@@ -303,6 +356,7 @@ button.link{border:0;padding:6px 0 0;color:var(--accent);text-decoration:underli
     </div>
     <label for="exportText">저장이 안 되는 환경에서는 아래 내용을 복사해 쓰세요.</label>
     <textarea id="exportText" readonly spellcheck="false"></textarea>
+    </div>
     <p class="foot">절단 후보선은 경간마다 규칙 1·2를 만족하는 조각을 모두 찾아 조각마다 하나씩 둡니다. 구역 타설량은 면적 비율 배분값이며, 이음면 위치는 구조기술자 확인을 거쳐 확정하세요.</p>
   </div>
 </main>
@@ -429,10 +483,19 @@ function analyze(inp) {
     const step = Math.max(0.01, Math.min(0.025, (hi - lo) / 80));
     const sig = p => { let k = '', any = false, n = 0; for (const b of crossers) if (p > b.a + TOL && p < b.b - TOL) { n++; const ok = crossOK(b, p, r, m).ok; k += ok ? '1' : '0'; if (ok) any = true; } return { k, ok: any || n === 0 }; };
     const out = []; let run = null;
+    const minW = inp.minCut > 0 ? inp.minCut : 0.3;
+    const put = v => {
+      const snapP = Math.round(v / 0.05) * 0.05;
+      const p = (snapP >= run.a - 1e-9 && snapP <= run.b + 1e-9) ? snapP : v;
+      const q = Math.round(p * 1000) / 1000;
+      if (!out.some(o => Math.abs(o.pos - q) < 0.02)) out.push({ pos: q });
+    };
     const flush = () => {
-      if (run && run.ok && run.b - run.a >= (inp.minCut > 0 ? inp.minCut : 0.3) - 1e-9) {
-        const mid = (run.a + run.b) / 2, snapP = Math.round(mid / 0.05) * 0.05;
-        out.push({ pos: Math.round((snapP >= run.a - 1e-9 && snapP <= run.b + 1e-9 ? snapP : mid) * 1000) / 1000 });
+      if (run && run.ok && run.b - run.a >= minW - 1e-9) {
+        const w = run.b - run.a;
+        // 자를 수 있는 조각이 넓으면 그 안에서 여러 위치를 후보로 둔다 (선택지 확대)
+        put((run.a + run.b) / 2);
+        if (w >= 3 * minW) { put(run.a + w / 4); put(run.b - w / 4); }
       }
       run = null;
     };
@@ -800,17 +863,20 @@ function evaluate(M, z, N, T) {
   return { vol, area, joint, total, bends, maxDev, score, maxVol: Math.max(...vol), minVol: Math.min(...vol) };
 }
 
-function solve(M, N, P, restarts, seed) {
+function solve(M, N, P, restarts, seed, deadline) {
   const rnd = mulberry32(seed || 20261010), T = M.C / N, raw = []; let overP = 0, bentN = 0;
+  const stop = deadline || (Date.now() + 4000);
   // (a) 절단선 조합에서 바로 만든 배정
-  for (const z of lineCandidates(M, N, P, rnd, 400)) {
+  for (const z of lineCandidates(M, N, P, rnd, 120, stop)) {
     const ev = evaluate(M, z, N, T);
     if (ev.maxVol > P + 1e-6) { overP++; continue; }
     if (ev.bends.length) { bentN++; continue; }
     raw.push({ z: Array.from(z), ...ev });
   }
-  // (b) 씨앗 확장 + 보정
-  for (let r = 0; r < restarts; r++) {
+  // (b) 씨앗 확장 + 보정 — 선 조합으로 이미 충분하면 적게, 큰 모델이면 횟수를 줄인다
+  const budget = raw.length >= 12 ? Math.min(restarts, 20) : Math.max(15, Math.min(restarts, Math.round(6000 / Math.max(10, M.units.length))));
+  for (let r = 0; r < budget; r++) {
+    if (Date.now() > stop) break;
     const seeds = pickSeeds(M, N, rnd); if (!seeds) break;
     const z = grow(M.units, seeds, Infinity); if (!z) continue;
     improve(M.units, z, N, Infinity, T);
@@ -864,32 +930,39 @@ function blocksFromLines(M, S) {
   }
   return { blocks, blockOf };
 }
-function lineCandidates(M, N, P, rnd, limit) {
+function lineCandidates(M, N, P, rnd, limit, stop) {
   const L = M.lines.length, out = [], seen = new Set();
   if (!L) return out;
   const tryS = (arr) => {
-    if (out.length >= limit) return;
+    if (out.length >= limit || (stop && Date.now() > stop)) return;
     const key = arr.slice().sort((p, q) => p - q).join(',');
     if (seen.has(key)) return; seen.add(key);
     const S = new Set(arr), { blocks, blockOf } = blocksFromLines(M, S);
     if (blocks.length < N || blocks.length > N + 6) return;
-    let z;
-    if (blocks.length === N) z = Array.from(blockOf);
+    const zs = [];
+    if (blocks.length === N) zs.push(Array.from(blockOf));
     else {
-      const seeds = pickSeedsG(blocks, N, rnd); if (!seeds) return;
-      const bz = grow(blocks, seeds); if (!bz) return;
-      improve(blocks, bz, N, P, M.C / N);
-      z = Array.from(blockOf, q => bz[q]);
+      // 블록이 남으면 여러 번(다른 시작점) 묶어 서로 다른 안을 만든다
+      for (let t = 0; t < 4; t++) {
+        const seeds = pickSeedsG(blocks, N, rnd); if (!seeds) continue;
+        const bz = grow(blocks, seeds); if (!bz) continue;
+        improve(blocks, bz, N, P, M.C / N);
+        zs.push(Array.from(blockOf, q => bz[q]));
+      }
     }
-    const vol = new Float64Array(N); M.units.forEach((u, i) => { vol[z[i]] += u.vol; });
-    if (Math.max(...vol) > P + 1e-6 || Math.min(...vol) <= 0) return;
-    out.push(z);
+    for (const z of zs) {
+      const vol = new Float64Array(N); M.units.forEach((u, i) => { vol[z[i]] += u.vol; });
+      if (Math.max(...vol) > P + 1e-6 || Math.min(...vol) <= 0) continue;
+      out.push(z);
+      if (out.length >= limit) return;
+    }
   };
   // 선 1~2개 조합은 전부, 그 이상은 무작위 표본
   for (let i = 0; i < L; i++) tryS([i]);
   for (let i = 0; i < L; i++) for (let j = i + 1; j < L; j++) tryS([i, j]);
-  const kMin = Math.max(1, Math.min(L, N - 1)), kMax = Math.min(L, N + 3);
-  for (let t = 0; t < limit * 40 && out.length < limit; t++) {
+  const kMin = Math.max(1, Math.min(L, N - 1)), kMax = Math.min(L, N + 6);
+  for (let t = 0; t < limit * 80 && out.length < limit; t++) {
+    if (stop && Date.now() > stop) break;
     const k = kMin + Math.floor(rnd() * (kMax - kMin + 1));
     const pool = []; for (let i = 0; i < L; i++) pool.push(i);
     for (let i = pool.length - 1; i > 0; i--) { const q = Math.floor(rnd() * (i + 1)); [pool[i], pool[q]] = [pool[q], pool[i]]; }
@@ -920,9 +993,23 @@ function recommend(M, N, P, restarts, want) {
   const pairs = [];
   M.units.forEach((u, i) => { for (const [v] of u.nb) if (i < v) pairs.push([i, v]); });
   const diff = (a, b) => { let d = 0; for (const [i, v] of pairs) if ((a.z[i] === a.z[v]) !== (b.z[i] === b.z[v])) d++; return d; };
-  const R = solve(M, N, P, restarts, 20261010 + N);
+  let pool = [], overP = 0, bentN = 0, found = 0, tried = 0;
+  const seen = new Set();
+  const stop = Date.now() + 7000;
+  for (let round = 0; round < 4; round++) {
+    if (Date.now() > stop) break;
+    const R = solve(M, N, P, restarts, 20261010 + N + round * 977, stop);
+    overP += R.overP; bentN += R.bentN; found += R.found; tried += R.tried;
+    for (const s of R.sols) {
+      const map = new Map();
+      const key = s.z.map(k => { if (!map.has(k)) map.set(k, map.size); return map.get(k); }).join(',');
+      if (!seen.has(key)) { seen.add(key); pool.push(s); }
+    }
+    if (pool.length >= want * 2) break;
+  }
+  pool.sort((a, b) => a.score - b.score);
   const picked = [];
-  for (const minD of [3, 1]) for (const s of R.sols) {
+  for (const minD of [3, 1]) for (const s of pool) {
     if (picked.length >= want) break;
     if (!picked.includes(s) && picked.every(p => diff(p, s) >= minD)) picked.push(s);
   }
@@ -933,7 +1020,7 @@ function recommend(M, N, P, restarts, want) {
     tag(s => s.total + 1e-3 * s.maxDev, '이음 최소');
   }
   picked.forEach(s => { s.tags = s.tags || []; });
-  return { sols: picked, T: M.C / N, tried: restarts, overP: R.overP, bentN: R.bentN, found: R.found };
+  return { sols: picked, T: M.C / N, tried, overP, bentN, found };
 }
 // ===== CORE-END =====
 // ===== IFC-START : Revit에서 내보낸 IFC 읽기 (외부 라이브러리 없이 직접 해석) =====
@@ -1416,8 +1503,9 @@ function readInputs() {
 
 const state = { M: null, R: null, sel: 0, inp: null, N: 0, fail: false };
 
+const MSG_TAG = { err: '오류', warn: '주의', ok: '완료' };
 function showMsgs(list) {
-  $('#msgs').innerHTML = list.map(([k, t]) => `<div class="msg ${k}"><p>${t}</p></div>`).join('');
+  $('#msgs').innerHTML = list.map(([k, t]) => `<div class="msg ${k}"><span class="tag">${MSG_TAG[k] || '안내'}</span><p>${t}</p></div>`).join('');
 }
 
 function run() {
