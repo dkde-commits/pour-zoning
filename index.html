@@ -1,0 +1,1613 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>타설구획 자동 분할</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E9EDEB; --sheet:#FBFCFB; --ink:#1D2A30; --muted:#586A70; --rule:#C2CBC9; --field:#FFFFFF;
+  --accent:#1F5E78; --accent-ink:#FFFFFF; --ok:#2E8B57; --ng:#C8423B; --warn:#9A6212;
+  --girder:#D9804F; --beam:#E4B84A; --wall:#5E4B86; --col:#1D2A30; --cell:#DDE3E1;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  font-family:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#141A1D; --sheet:#1B2327; --ink:#E3EAEA; --muted:#98A8AB; --rule:#33434A; --field:#11171A;
+    --accent:#72B6D1; --accent-ink:#0E191E; --ok:#5BC08A; --ng:#EE7A73; --warn:#E3AE5A; --cell:#2A3438; --col:#E3EAEA;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141A1D; --sheet:#1B2327; --ink:#E3EAEA; --muted:#98A8AB; --rule:#33434A; --field:#11171A;
+  --accent:#72B6D1; --accent-ink:#0E191E; --ok:#5BC08A; --ng:#EE7A73; --warn:#E3AE5A; --cell:#2A3438; --col:#E3EAEA;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);font-size:15px;line-height:1.55;font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0;line-height:1.25}
+.top{padding:28px clamp(16px,4vw,40px) 18px;border-bottom:2px solid var(--ink);display:flex;flex-wrap:wrap;gap:8px 32px;align-items:end;justify-content:space-between}
+.top h1{font-size:clamp(24px,4.2vw,34px);font-weight:700;letter-spacing:-.02em}
+.top p{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.spec{font-size:13px;color:var(--muted);text-align:right}
+.layout{display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:0;min-height:70vh}
+@media (max-width:920px){.layout{grid-template-columns:1fr}}
+.panel{border-right:1px solid var(--rule);padding:18px clamp(16px,3vw,24px) 40px;background:var(--paper)}
+@media (max-width:920px){.panel{border-right:0;border-bottom:1px solid var(--rule)}}
+fieldset{border:0;margin:0 0 18px;padding:0}
+legend{font-weight:600;font-size:15px;padding:0;margin-bottom:8px;display:flex;gap:8px;align-items:baseline}
+legend .n{display:inline-grid;place-items:center;width:22px;height:22px;border:1.5px solid var(--ink);border-radius:50%;font-size:12px;font-weight:600}
+label{display:block;font-size:13px;color:var(--muted);margin:8px 0 3px}
+label b{color:var(--ink);font-weight:500}
+input[type=text],input[type=number],textarea{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--field);border:1px solid var(--rule);border-radius:4px;padding:7px 9px}
+textarea{min-height:84px;resize:vertical;font-size:13px;line-height:1.45}
+input:focus-visible,textarea:focus-visible,button:focus-visible,summary:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.check{display:flex;gap:8px;align-items:flex-start;color:var(--ink);font-size:13px;margin-top:10px}
+.check input{margin-top:3px}
+.hint{font-size:12px;color:var(--muted);margin:3px 0 0}
+.actions{position:sticky;bottom:0;background:var(--paper);padding:12px 0 calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--rule)}
+button{font:inherit;font-size:14px;border-radius:4px;padding:9px 14px;cursor:pointer;border:1px solid var(--ink);background:transparent;color:var(--ink)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600;flex:1 1 auto}
+button:disabled{opacity:.5;cursor:wait}
+details{border-top:1px solid var(--rule);padding:10px 0}
+details summary{cursor:pointer;font-weight:500;font-size:14px}
+details ol{padding-left:20px;margin:8px 0 0;font-size:13px}
+details li{margin-bottom:4px}
+.result{padding:18px clamp(16px,3vw,32px) 48px;min-width:0}
+.msg{border-left:4px solid var(--muted);padding:8px 12px;margin:0 0 14px;background:var(--sheet);font-size:14px}
+.msg.err{border-color:var(--ng)} .msg.warn{border-color:var(--warn)} .msg.ok{border-color:var(--ok)}
+.msg p{margin:2px 0}
+.empty{border:1.5px dashed var(--rule);padding:40px 20px;text-align:center;color:var(--muted)}
+.layers{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;margin:0 0 10px}
+.layers label{display:flex;gap:6px;align-items:center;margin:0;color:var(--ink)}
+.sheet{background:var(--sheet);border:2px solid var(--ink);padding:10px}
+.drawing{overflow-x:auto}
+.drawing svg{display:block;width:100%;height:auto;max-height:80vh}
+.titleblock{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);border-top:2px solid var(--ink);margin-top:10px}
+@media (max-width:640px){.titleblock{grid-template-columns:1fr}}
+.tb-name{padding:10px 12px;border-right:1px solid var(--ink)}
+@media (max-width:640px){.tb-name{border-right:0;border-bottom:1px solid var(--ink)}}
+.tb-name h2{font-size:20px;font-weight:700}
+.tb-name .sub{color:var(--muted);font-size:13px;margin-top:2px}
+.tb-facts{display:grid;grid-template-columns:1fr 1fr;margin:0}
+.tb-facts div{padding:7px 12px;border-bottom:1px solid var(--rule)}
+.tb-facts dt{font-size:12px;color:var(--muted)} .tb-facts dd{margin:0;font-weight:600;font-size:16px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
+th{font-weight:500;color:var(--muted);font-size:12.5px}
+th:first-child,td:first-child{text-align:left}
+.sw{display:inline-block;width:12px;height:12px;border:1px solid var(--ink);vertical-align:-1px;margin-right:6px}
+.over{color:var(--ng);font-weight:600}
+h3{font-size:16px;font-weight:600;margin:26px 0 8px}
+.alts tr{cursor:pointer} .alts tr.sel td{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.alts tbody tr:hover td{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend span{display:inline-flex;gap:5px;align-items:center}
+.legend i{display:inline-block;width:18px;height:0;border-top:3px solid}
+.exports{display:flex;flex-wrap:wrap;gap:8px}
+.exports textarea{min-height:120px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.cand-h{margin-top:4px}
+.cands{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:8px 0 14px}
+@media (max-width:480px){.cands{grid-template-columns:1fr 1fr;gap:8px}}
+@media (max-width:640px){#altTable{display:none}}
+.cand{display:flex;flex-direction:column;gap:4px;text-align:left;padding:8px;border:1.5px solid var(--rule);border-radius:4px;background:var(--sheet);color:var(--ink);font-size:12.5px;line-height:1.35}
+.cand:hover{border-color:var(--accent)}
+.cand[aria-pressed="true"]{border:2px solid var(--accent);padding:7.5px;box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
+.cand svg{width:100%;height:auto;display:block;aspect-ratio:4/3;background:var(--paper);border-radius:2px}
+.cand .ct{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:14px}
+.cand .ct small{font-weight:500;color:var(--muted);font-size:12px}
+.cand .cm{color:var(--muted)}
+.cand .tags{display:flex;flex-wrap:wrap;gap:3px}
+.cand .tags span{font-size:11px;padding:1px 5px;border-radius:3px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--ink)}
+.cand .tags span.day{background:color-mix(in srgb,var(--warn) 22%,transparent)}
+.basis{margin-top:10px}
+.basis table{font-size:12.5px}
+.basis td,.basis th{text-align:left;white-space:normal}
+.basis td:nth-child(2){text-align:right;white-space:nowrap}
+.basis .src{color:var(--muted)}
+.inline-btn{margin-left:6px;padding:3px 10px;font-size:13px;border-color:var(--accent);color:var(--accent)}
+.foot{font-size:12px;color:var(--muted);margin-top:28px;max-width:75ch}
+
+.upload{border:2px solid var(--ink);background:var(--sheet);padding:14px 14px 12px;margin:0 0 14px}
+.upload h2{font-size:17px;font-weight:700}
+.upload .hint{margin:4px 0 10px}
+.drop{display:grid;gap:2px;place-items:center;text-align:center;border:1.5px dashed var(--accent);border-radius:4px;padding:20px 10px;cursor:pointer;margin:0;color:var(--ink);background:color-mix(in srgb,var(--accent) 5%,transparent)}
+.drop.over{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.drop-main{font-weight:600;font-size:16px;color:var(--accent)}
+.drop-sub{font-size:12px;color:var(--muted)}
+.vh{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.ifc-status{font-size:13px;margin-top:8px}
+.ifc-status.err{color:var(--ng)} .ifc-status.ok{color:var(--ok)}
+.ifc-status ol{margin:6px 0 0;padding-left:18px;color:var(--ink)}
+select{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--field);border:1px solid var(--rule);border-radius:4px;padding:7px 9px}
+button.wide{width:100%;margin-top:10px}
+button.link{border:0;padding:6px 0 0;color:var(--accent);text-decoration:underline;font-size:13px}
+.or{font-size:12px;color:var(--muted);margin:0 0 14px}
+@media (prefers-reduced-motion:no-preference){.sheet.fresh{animation:land .45s ease-out}@keyframes land{from{opacity:.2;transform:translateY(6px)}to{opacity:1;transform:none}}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>타설구획 자동 분할</h1>
+    <p>Revit에서 내보낸 IFC 파일을 올리면 슬래브·기둥·보·벽을 읽어, 이음 규칙(KCS 14 20 10)에 맞게 하루에 칠 수 있는 구역으로 나눕니다.</p>
+  </div>
+  <div class="spec">단위: m, ㎥ · 좌표는 평면 X(가로)·Y(세로)</div>
+</header>
+
+<div class="layout">
+<aside class="panel">
+  <section class="upload" aria-labelledby="upTitle">
+    <h2 id="upTitle">Revit 모델 올리기</h2>
+    <p class="hint">Revit에서 <b>파일 → 내보내기 → IFC</b>로 저장한 파일을 올리세요. 파일은 이 브라우저 안에서만 읽고 어디에도 전송하지 않습니다.</p>
+    <label class="drop" id="drop" for="ifcFile">
+      <span class="drop-main">IFC 파일 선택</span>
+      <span class="drop-sub">또는 여기로 끌어다 놓기 (.ifc)</span>
+    </label>
+    <input id="ifcFile" type="file" accept=".ifc,.rvt" class="vh">
+    <div id="ifcStatus" class="ifc-status" role="status"></div>
+    <div id="ifcPick" hidden>
+      <label for="storey"><b>구획할 층</b></label>
+      <select id="storey"></select>
+      <button type="button" class="primary wide" id="ifcRun">이 층 구획하기</button>
+    </div>
+    <button type="button" class="link" id="ifcSample">예제 IFC로 해보기</button>
+  </section>
+  <p class="or">불러온 값은 아래에서 고칠 수 있습니다. 좌표를 직접 넣어도 됩니다.</p>
+  <fieldset>
+    <legend><span class="n">1</span>슬래브</legend>
+    <div class="row2">
+      <div><label for="project">프로젝트</label><input id="project" type="text"></div>
+      <div><label for="floor">층</label><input id="floor" type="text"></div>
+    </div>
+    <label for="slab"><b>외곽선 꼭짓점</b> — 한 줄에 x, y (순서대로 한 바퀴)</label>
+    <textarea id="slab" spellcheck="false"></textarea>
+    <div class="row2">
+      <div><label for="t"><b>두께 t</b> (m)</label><input id="t" type="number" step="0.01" min="0"></div>
+      <div><label for="C"><b>총 타설량 C</b> (㎥/층)</label><input id="C" type="number" step="0.1" min="0" placeholder="비우면 면적×t"></div>
+    </div>
+    <p class="hint">C를 넣으면 각 구역 타설량은 면적 비율로 나눠 계산합니다(보 물량 포함 값을 넣으면 보도 반영).</p>
+  </fieldset>
+
+  <fieldset>
+    <legend><span class="n">2</span>기둥</legend>
+    <label for="columns"><b>기둥 중심점</b> — 한 줄에 x, y</label>
+    <textarea id="columns" spellcheck="false"></textarea>
+    <p class="hint">같은 선 위 이웃 기둥 사이에는 큰보가 있다고 보고 자동으로 만듭니다.</p>
+  </fieldset>
+
+  <fieldset>
+    <legend><span class="n">3</span>작은보 · 벽 · 개구부</legend>
+    <label for="beams"><b>보</b> — x1, y1, x2, y2, 폭</label>
+    <textarea id="beams" spellcheck="false" placeholder="비워도 됩니다"></textarea>
+    <label for="walls"><b>콘크리트 벽·코어</b> — 사각형 x1, y1, x2, y2</label>
+    <textarea id="walls" spellcheck="false" placeholder="비워도 됩니다"></textarea>
+    <label for="openings"><b>개구부·계단실</b> — 사각형 x1, y1, x2, y2</label>
+    <textarea id="openings" spellcheck="false" placeholder="비워도 됩니다"></textarea>
+  </fieldset>
+
+  <fieldset>
+    <legend><span class="n">4</span>현장 조건</legend>
+    <div class="row2">
+      <div><label for="P"><b>1일 최대 타설량 P</b> (㎥)</label><input id="P" type="number" step="1" min="1"></div>
+      <div><label for="N"><b>구역 수 N</b></label><input id="N" type="number" step="1" min="1" placeholder="비우면 최소값"></div>
+    </div>
+    <p class="hint" id="nHint">N은 올림(C/P) 이상이어야 합니다.</p>
+  </fieldset>
+
+  <details>
+    <summary>규칙 설정값</summary>
+    <div class="row2">
+      <div><label for="ratio">가운데 구간 비율</label><input id="ratio" type="text" value="1/3"></div>
+      <div><label for="mult">작은보 이격 배수</label><input id="mult" type="number" step="0.5" min="0" value="2"></div>
+      <div><label for="defW">기본 작은보 폭 (m)</label><input id="defW" type="number" step="0.05" min="0.05" value="0.4"></div>
+      <div><label for="minCut">최소 절단 가능 폭 (m)</label><input id="minCut" type="number" step="0.05" min="0" value="0.3"></div>
+      <div><label for="cantMin">캔틸레버로 보는 내민 길이 (m)</label><input id="cantMin" type="number" step="0.05" min="0" value="0.3"></div>
+      <div><label for="restarts">대안 탐색 횟수</label><input id="restarts" type="number" step="10" min="10" max="500" value="120"></div>
+    </div>
+    <label class="check"><input id="cantExt" type="checkbox"><span>캔틸레버를 안쪽 절단선의 연장선으로 나누는 것 허용 — 규칙 4와 다른 예외 설정입니다. 켜기 전에 구조기술자 확인이 필요합니다.</span></label>
+  </details>
+
+  <details>
+    <summary>JSON으로 한 번에 넣기 (Revit·Dynamo 추출 파일)</summary>
+    <label for="jsonFile">JSON 파일 선택</label>
+    <input id="jsonFile" type="file" accept=".json,application/json">
+    <label for="jsonText">또는 내용 붙여넣기</label>
+    <textarea id="jsonText" spellcheck="false" placeholder='{"slab":[[0,0],...],"columns":[...]}'></textarea>
+    <button type="button" id="jsonLoad">붙여넣은 JSON 적용</button>
+  </details>
+
+  <details>
+    <summary>적용 규칙 6가지</summary>
+    <ol>
+      <li>보를 가로지를 때 기둥 사이 가운데 1/3 안에서만 자른다 (KCS 3.6.5(1), 수치는 ACI 318-14 26.5.6.2(b) 참조)</li>
+      <li>작은보 접합점에서 좌우로 작은보 폭의 2배는 비운다 (KCS 3.6.5(1) 단서)</li>
+      <li>벽·코어·개구부는 지나갈 수 없다. 꺾임은 보·기둥 위에서만 — 어기는 배정은 후보에서 제외</li>
+      <li>캔틸레버는 자르지 않고 옆 구역에 통째로 붙인다 (KCS 3.6.4(1))</li>
+      <li>절단선은 그리드와 나란한 직선만 쓴다 (KCS 3.6.2(1), 3.7.1(3) + 시공성)</li>
+      <li>한 구역은 하나로 이어져야 한다 — 인접 그래프 씨앗 확장 (KCS 3.7.1(2))</li>
+    </ol>
+  </details>
+
+  <div class="actions">
+    <button type="button" class="primary" id="run">구획 나누기</button>
+    <button type="button" id="example">예제 불러오기</button>
+  </div>
+</aside>
+
+<main class="result" id="result" aria-live="polite">
+  <div class="empty" id="empty">
+    <p>왼쪽에 슬래브·기둥 좌표를 넣거나 <b>예제 불러오기</b>를 누른 뒤 <b>구획 나누기</b>를 누르세요.</p>
+  </div>
+  <div id="out" hidden>
+    <div id="msgs"></div>
+    <div id="altBlock">
+      <h3 class="cand-h">타설 방법 후보 <span id="candCount"></span></h3>
+      <p class="hint">정한 구역 수 안에서 규칙 1~6을 모두 지키는 안만, 추천순으로 보여줍니다. 후보를 누르면 아래에 큰 도면과 구역별 타설량이 나옵니다.</p>
+      <div class="cands" id="cands"></div>
+      <div class="tablewrap"><table class="alts" id="altTable"></table></div>
+    </div>
+    <h3 id="detailTitle">선택한 후보</h3>
+    <div class="layers" role="group" aria-label="도면 표시">
+      <label><input type="checkbox" data-layer="zones" checked>구획</label>
+      <label><input type="checkbox" data-layer="cand">절단 가능 위치</label>
+      <label><input type="checkbox" data-layer="units">최소 타설 단위</label>
+      <label><input type="checkbox" data-layer="struct" checked>보·기둥</label>
+    </div>
+    <div class="sheet" id="sheet">
+      <div class="drawing" id="drawing"></div>
+      <div class="legend" id="legend"></div>
+      <div class="basis tablewrap" id="basis" aria-label="판정 근거"></div>
+      <div class="titleblock">
+        <div class="tb-name"><h2 id="tbTitle"></h2><div class="sub" id="tbSub"></div></div>
+        <dl class="tb-facts" id="tbFacts"></dl>
+      </div>
+    </div>
+    <div id="zoneBlock">
+      <h3>구역별 타설량</h3>
+      <p class="hint">구역별 이음 길이는 그 구역을 둘러싼 이음면 길이라, 이웃과 맞닿은 이음이 양쪽에 모두 들어갑니다. 합계는 중복을 뺀 실제 이음 길이입니다.</p>
+      <div class="tablewrap"><table id="zoneTable"></table></div>
+    </div>
+    <h3>내보내기</h3>
+    <div class="exports">
+      <button type="button" id="dlCsv">구역표 CSV 저장</button>
+      <button type="button" id="dlSvg">도면 SVG 저장</button>
+      <button type="button" id="dlJson">입력값 JSON 저장</button>
+    </div>
+    <label for="exportText">저장이 안 되는 환경에서는 아래 내용을 복사해 쓰세요.</label>
+    <textarea id="exportText" readonly spellcheck="false"></textarea>
+    <p class="foot">절단 후보선은 경간마다 규칙 1·2를 만족하는 조각을 모두 찾아 조각마다 하나씩 둡니다. 구역 타설량은 면적 비율 배분값이며, 이음면 위치는 구조기술자 확인을 거쳐 확정하세요.</p>
+  </div>
+</main>
+</div>
+<script>
+// ===== CORE-START : 화면과 무관한 계산 로직 (규칙 1~6) =====
+const EPS = 1e-6, TOL = 0.05;
+
+function uniqSorted(arr, e) {
+  const a = arr.slice().sort((p, q) => p - q), out = [];
+  for (const v of a) if (!out.length || Math.abs(v - out[out.length - 1]) > e) out.push(v);
+  return out;
+}
+function pip(x, y, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function inRect(x, y, r) { return x > r[0] && x < r[2] && y > r[1] && y < r[3]; }
+function normRect(r) { return [Math.min(r[0], r[2]), Math.min(r[1], r[3]), Math.max(r[0], r[2]), Math.max(r[1], r[3])]; }
+function mkBeam(o, c, a, b, w, kind) { return { o, c, a, b, w, kind, j: [] }; }
+
+// 규칙 1·2: 보를 가로지르는 위치 pos가 가운데 구간 안이고, 작은보 접합부 ±(배수×폭) 밖인가
+function crossOK(beam, pos, r, m) {
+  const L = beam.b - beam.a, lo = beam.a + L * (1 - r) / 2, hi = beam.b - L * (1 - r) / 2;
+  if (pos < lo - EPS || pos > hi + EPS) return { ok: false, why: 'mid' };
+  for (const jn of beam.j) if (Math.abs(pos - jn.pos) < m * jn.w - EPS) return { ok: false, why: 'jn' };
+  return { ok: true };
+}
+
+function analyze(inp) {
+  const W = [], E = [];
+  const poly = inp.slab.map(p => [p[0], p[1]]);
+  if (poly.length < 3) { E.push('슬래브 외곽선 꼭짓점을 3개 이상 입력하세요.'); return { E, W }; }
+  if (inp.columns.length < 2) { E.push('기둥 중심 좌표를 2개 이상 입력하세요.'); return { E, W }; }
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i], q = poly[(i + 1) % poly.length];
+    if (Math.abs(p[0] - q[0]) > TOL && Math.abs(p[1] - q[1]) > TOL) { W.push('슬래브 외곽선에 사선 변이 있어 계단 모양으로 근사했습니다.'); break; }
+  }
+  const r = inp.ratio, m = inp.mult;
+  const xs = uniqSorted(inp.columns.map(c => c[0]), TOL), ys = uniqSorted(inp.columns.map(c => c[1]), TOL);
+  const snap = (v, arr) => { for (const a of arr) if (Math.abs(a - v) <= TOL) return a; return v; };
+  const cs = inp.columns.map(c => [snap(c[0], xs), snap(c[1], ys)]);
+  const onCol = (x, y) => cs.some(c => Math.abs(c[0] - x) <= TOL && Math.abs(c[1] - y) <= TOL);
+  const touchesSlab = (x, y, o) => {
+    const d = 0.05;
+    return o === 'h' ? (pip(x, y + d, poly) || pip(x, y - d, poly)) : (pip(x + d, y, poly) || pip(x - d, y, poly));
+  };
+
+  // 입력한 보(모델에서 읽은 보)를 먼저 등록: 양 끝이 기둥이면 큰보, 아니면 작은보
+  const beams = [];
+  let diag = 0;
+  for (const row of inp.beams) {
+    const [x1, y1, x2, y2] = row; const w = row[4] > 0 ? row[4] : inp.defW;
+    let b;
+    if (Math.abs(y1 - y2) <= TOL) b = mkBeam('h', (y1 + y2) / 2, Math.min(x1, x2), Math.max(x1, x2), w, 'B');
+    else if (Math.abs(x1 - x2) <= TOL) b = mkBeam('v', (x1 + x2) / 2, Math.min(y1, y2), Math.max(y1, y2), w, 'B');
+    else { diag++; continue; }
+    const e1 = b.o === 'h' ? [b.a, b.c] : [b.c, b.a], e2 = b.o === 'h' ? [b.b, b.c] : [b.c, b.b];
+    if (onCol(e1[0], e1[1]) && onCol(e2[0], e2[1])) b.kind = 'G';
+    beams.push(b);
+  }
+  // 모델에 보가 없는 기둥 사이 구간만 큰보를 가정해서 채움 (가정한 개수는 경고로 알림)
+  let assumed = 0;
+  const covered = (o, c, a0, b0) => beams.some(g => g.o === o && Math.abs(g.c - c) <= 0.2 && g.a <= a0 + 0.2 && g.b >= b0 - 0.2);
+  for (const y of ys) {
+    const on = cs.filter(c => c[1] === y).map(c => c[0]).sort((p, q) => p - q);
+    for (let i = 0; i < on.length - 1; i++) {
+      if (on[i + 1] - on[i] <= TOL || !touchesSlab((on[i] + on[i + 1]) / 2, y, 'h')) continue;
+      if (covered('h', y, on[i], on[i + 1])) continue;
+      beams.push(mkBeam('h', y, on[i], on[i + 1], 0, 'G')); assumed++;
+    }
+  }
+  for (const x of xs) {
+    const on = cs.filter(c => c[0] === x).map(c => c[1]).sort((p, q) => p - q);
+    for (let i = 0; i < on.length - 1; i++) {
+      if (on[i + 1] - on[i] <= TOL || !touchesSlab(x, (on[i] + on[i + 1]) / 2, 'v')) continue;
+      if (covered('v', x, on[i], on[i + 1])) continue;
+      beams.push(mkBeam('v', x, on[i], on[i + 1], 0, 'G')); assumed++;
+    }
+  }
+  if (assumed) W.push(`모델에 보가 없는 기둥 사이 구간 ${assumed}곳은 큰보가 있다고 가정했습니다.`);
+  if (diag) W.push(`사선 보 ${diag}개는 계산에서 제외했습니다.`);
+  // 작은보 끝이 다른 보 중간에 닿는 곳 = 접합점 (규칙 2)
+  for (const sb of beams) {
+    if (sb.kind !== 'B') continue;
+    const ends = sb.o === 'h' ? [[sb.a, sb.c], [sb.b, sb.c]] : [[sb.c, sb.a], [sb.c, sb.b]];
+    for (const [px, py] of ends) for (const g of beams) {
+      if (g === sb || g.o === sb.o) continue;
+      const along = g.o === 'h' ? px : py, perp = g.o === 'h' ? py : px;
+      if (Math.abs(perp - g.c) <= TOL && along > g.a + TOL && along < g.b - TOL) g.j.push({ pos: along, w: sb.w });
+    }
+  }
+
+  // 절단 후보선: 기둥 사이 경간마다 1개, 가로지르는 보들을 가장 많이 만족하는 위치 (규칙 1·2·5)
+  // 규칙 1·2: 기둥 사이 가운데 구간에서, 가로지르는 보마다 자를 수 있는 조각을 모두 찾아
+  // 조각마다 후보선 하나(조각 가운데)를 둔다. 판정이 같은 연속 구간 = 조각
+  function cutCandidates(s0, s1, crossers) {
+    const L = s1 - s0, lo = s0 + L * (1 - r) / 2, hi = s1 - L * (1 - r) / 2;
+    const step = Math.max(0.01, Math.min(0.025, (hi - lo) / 80));
+    const sig = p => { let k = '', any = false, n = 0; for (const b of crossers) if (p > b.a + TOL && p < b.b - TOL) { n++; const ok = crossOK(b, p, r, m).ok; k += ok ? '1' : '0'; if (ok) any = true; } return { k, ok: any || n === 0 }; };
+    const out = []; let run = null;
+    const flush = () => {
+      if (run && run.ok && run.b - run.a >= (inp.minCut > 0 ? inp.minCut : 0.3) - 1e-9) {
+        const mid = (run.a + run.b) / 2, snapP = Math.round(mid / 0.05) * 0.05;
+        out.push({ pos: Math.round((snapP >= run.a - 1e-9 && snapP <= run.b + 1e-9 ? snapP : mid) * 1000) / 1000 });
+      }
+      run = null;
+    };
+    for (let p = lo; p <= hi + 1e-9; p += step) {
+      const q = Math.min(p, hi), g = sig(q);
+      if (run && run.k === g.k) run.b = q; else { flush(); run = { a: q, b: q, k: g.k, ok: g.ok }; }
+    }
+    flush();
+    return out;
+  }
+  const hB = beams.filter(b => b.o === 'h'), vB = beams.filter(b => b.o === 'v');
+  const cutX = [], cutY = [];
+  for (let i = 0; i < xs.length - 1; i++) cutX.push(...cutCandidates(xs[i], xs[i + 1], hB));
+  for (let i = 0; i < ys.length - 1; i++) cutY.push(...cutCandidates(ys[i], ys[i + 1], vB));
+
+  // 셀 격자
+  const bx0 = Math.min(...poly.map(p => p[0])), bx1 = Math.max(...poly.map(p => p[0]));
+  const by0 = Math.min(...poly.map(p => p[1])), by1 = Math.max(...poly.map(p => p[1]));
+  let X = [...xs, ...cutX.map(c => c.pos), ...poly.map(p => p[0])], Y = [...ys, ...cutY.map(c => c.pos), ...poly.map(p => p[1])];
+  for (const b of beams) { if (b.o === 'v') { X.push(b.c); Y.push(b.a, b.b); } else { Y.push(b.c); X.push(b.a, b.b); } }
+  for (const rc of [...inp.walls, ...inp.openings]) { X.push(rc[0], rc[2]); Y.push(rc[1], rc[3]); }
+  X = uniqSorted(X.filter(v => v >= bx0 - EPS && v <= bx1 + EPS), 0.005);
+  Y = uniqSorted(Y.filter(v => v >= by0 - EPS && v <= by1 + EPS), 0.005);
+  const nx = X.length - 1, ny = Y.length - 1, idx = (i, j) => j * nx + i;
+  const inPoly = new Uint8Array(nx * ny), active = new Uint8Array(nx * ny), blockKind = new Uint8Array(nx * ny); // 1=벽, 2=개구부
+  let totalArea = 0;
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const cx = (X[i] + X[i + 1]) / 2, cy = (Y[j] + Y[j + 1]) / 2, k = idx(i, j);
+    if (!pip(cx, cy, poly)) continue;
+    inPoly[k] = 1;
+    if (inp.walls.some(rc => inRect(cx, cy, rc))) { blockKind[k] = 1; continue; }
+    if (inp.openings.some(rc => inRect(cx, cy, rc))) { blockKind[k] = 2; continue; }
+    active[k] = 1; totalArea += (X[i + 1] - X[i]) * (Y[j + 1] - Y[j]);
+  }
+  // 규칙 4: 받치는 보가 한쪽에만 있는(자유단이 있는) 영역 = 캔틸레버
+  const cantMin = inp.cantMin > 0 ? inp.cantMin : 0.3;
+  const cantCell = new Uint8Array(nx * ny);
+  for (let j = 0; j < ny; j++) {
+    const cy = (Y[j] + Y[j + 1]) / 2;
+    const vb = vB.filter(b => b.a - TOL <= cy && cy <= b.b + TOL).map(b => b.c).sort((p, q) => p - q);
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < nx; i++) if (active[idx(i, j)]) { lo = Math.min(lo, X[i]); hi = Math.max(hi, X[i + 1]); }
+    if (lo === Infinity) continue;
+    for (let i = 0; i < nx; i++) {
+      const k = idx(i, j); if (!active[k]) continue;
+      const cx = (X[i] + X[i + 1]) / 2;
+      if (!vb.length) continue; // 이 줄에 세로보가 없으면 지지는 가로보가 맡는다 → 세로 방향 판정에 맡김
+      if (cx > vb[vb.length - 1] && hi - vb[vb.length - 1] > cantMin) cantCell[k] = 1;
+      if (cx < vb[0] && vb[0] - lo > cantMin) cantCell[k] = 1;
+    }
+  }
+  for (let i = 0; i < nx; i++) {
+    const cx = (X[i] + X[i + 1]) / 2;
+    const hb = hB.filter(b => b.a - TOL <= cx && cx <= b.b + TOL).map(b => b.c).sort((p, q) => p - q);
+    let lo = Infinity, hi = -Infinity;
+    for (let j = 0; j < ny; j++) if (active[idx(i, j)]) { lo = Math.min(lo, Y[j]); hi = Math.max(hi, Y[j + 1]); }
+    if (lo === Infinity) continue;
+    for (let j = 0; j < ny; j++) {
+      const k = idx(i, j); if (!active[k]) continue;
+      const cy = (Y[j] + Y[j + 1]) / 2;
+      if (!hb.length) continue;
+      if (cy > hb[hb.length - 1] && hi - hb[hb.length - 1] > cantMin) cantCell[k] = 1;
+      if (cy < hb[0] && hb[0] - lo > cantMin) cantCell[k] = 1;
+    }
+  }
+  const isCutX = x => cutX.some(c => Math.abs(c.pos - x) < 0.006), isCutY = y => cutY.some(c => Math.abs(c.pos - y) < 0.006);
+  function nodeBad(x, y, dir) {
+    for (const b of (dir === 'v' ? hB : vB)) {
+      const along = dir === 'v' ? x : y, perp = dir === 'v' ? y : x;
+      if (Math.abs(b.c - perp) > TOL) continue;
+      if (along > b.a + TOL && along < b.b - TOL) { const q = crossOK(b, along, r, m); if (!q.ok) return q.why; }
+    }
+    return null;
+  }
+  // 셀 사이 경계면 → 자를 수 있는가
+  const edges = [];
+  for (let j = 0; j < ny; j++) for (let i = 1; i < nx; i++) {
+    const A = idx(i - 1, j), B = idx(i, j), x = X[i];
+    if (!inPoly[A] || !inPoly[B]) continue;
+    const cand = isCutX(x);
+    if (!active[A] || !active[B]) { if (cand) edges.push({ x1: x, y1: Y[j], x2: x, y2: Y[j + 1], A: -1, B: -1, ok: false, why: 'wall', cand, len: Y[j + 1] - Y[j] }); continue; }
+    let ok = false, why = 'grid';
+    if (cand) {
+      if ((cantCell[A] || cantCell[B]) && !inp.cantExt) why = 'cant';
+      else { const w1 = nodeBad(x, Y[j], 'v') || nodeBad(x, Y[j + 1], 'v'); if (w1) why = w1; else { ok = true; why = ''; } }
+    }
+    edges.push({ x1: x, y1: Y[j], x2: x, y2: Y[j + 1], A, B, ok, why, cand, len: Y[j + 1] - Y[j] });
+  }
+  for (let j = 1; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const A = idx(i, j - 1), B = idx(i, j), y = Y[j];
+    if (!inPoly[A] || !inPoly[B]) continue;
+    const cand = isCutY(y);
+    if (!active[A] || !active[B]) { if (cand) edges.push({ x1: X[i], y1: y, x2: X[i + 1], y2: y, A: -1, B: -1, ok: false, why: 'wall', cand, len: X[i + 1] - X[i] }); continue; }
+    let ok = false, why = 'grid';
+    if (cand) {
+      if ((cantCell[A] || cantCell[B]) && !inp.cantExt) why = 'cant';
+      else { const w1 = nodeBad(X[i], y, 'h') || nodeBad(X[i + 1], y, 'h'); if (w1) why = w1; else { ok = true; why = ''; } }
+    }
+    edges.push({ x1: X[i], y1: y, x2: X[i + 1], y2: y, A, B, ok, why, cand, len: X[i + 1] - X[i] });
+  }
+
+  // 자를 수 없는 경계로 붙은 셀 = 최소 타설 단위
+  const par = new Int32Array(nx * ny); for (let k = 0; k < par.length; k++) par[k] = k;
+  const find = k => { while (par[k] !== k) { par[k] = par[par[k]]; k = par[k]; } return k; };
+  for (const e of edges) if (e.A >= 0 && !e.ok) { const a = find(e.A), b = find(e.B); if (a !== b) par[a] = b; }
+  const unitOf = new Int32Array(nx * ny).fill(-1), rootMap = new Map(), units = [];
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const k = idx(i, j); if (!active[k]) continue;
+    const rt = find(k); let u = rootMap.get(rt);
+    if (u === undefined) { u = units.length; rootMap.set(rt, u); units.push({ area: 0, sx: 0, sy: 0, cells: [], nb: new Map() }); }
+    unitOf[k] = u;
+    const a = (X[i + 1] - X[i]) * (Y[j + 1] - Y[j]);
+    units[u].area += a; units[u].sx += a * (X[i] + X[i + 1]) / 2; units[u].sy += a * (Y[j] + Y[j + 1]) / 2; units[u].cells.push(k);
+  }
+  if (!units.length) { E.push('슬래브 안에 계산할 영역이 없습니다. 외곽선 좌표를 확인하세요.'); return { E, W }; }
+  const C = inp.C > 0 ? inp.C : totalArea * inp.t;
+  for (const u of units) { u.cx = u.sx / u.area; u.cy = u.sy / u.area; u.vol = u.area / totalArea * C; }
+  for (const e of edges) {
+    if (e.A < 0 || !e.ok) continue;
+    const a = unitOf[e.A], b = unitOf[e.B]; if (a === b) continue;
+    units[a].nb.set(b, (units[a].nb.get(b) || 0) + e.len); units[b].nb.set(a, (units[b].nb.get(a) || 0) + e.len);
+  }
+  // 서로 이어지지 않은 덩어리(벽 등으로 완전히 분리)
+  const comp = new Int32Array(units.length).fill(-1), comps = [];
+  for (let s = 0; s < units.length; s++) {
+    if (comp[s] >= 0) continue;
+    const list = [s]; comp[s] = comps.length;
+    for (let q = 0; q < list.length; q++) for (const [v] of units[list[q]].nb) if (comp[v] < 0) { comp[v] = comps.length; list.push(v); }
+    comps.push(list);
+  }
+  const why = { mid: 0, jn: 0, cant: 0, wall: 0 }; let okN = 0, ngN = 0;
+  for (const e of edges) if (e.cand) { if (e.ok) okN++; else { ngN++; if (why[e.why] !== undefined) why[e.why]++; } }
+  const maxUnit = units.reduce((a, u, i) => u.vol > units[a].vol ? i : a, 0);
+  // 조각마다 모서리 꼭짓점 목록 (꺾임 검사용)
+  for (const u of units) {
+    const set = new Set();
+    for (const k of u.cells) { const i = k % nx, j = (k - i) / nx; set.add(j * (nx + 1) + i); set.add(j * (nx + 1) + i + 1); set.add((j + 1) * (nx + 1) + i); set.add((j + 1) * (nx + 1) + i + 1); }
+    u.nodes = Array.from(set);
+  }
+  const onBeam = (x, y) => beams.some(b => b.o === 'h'
+    ? Math.abs(b.c - y) <= TOL && x >= b.a - TOL && x <= b.b + TOL
+    : Math.abs(b.c - x) <= TOL && y >= b.a - TOL && y <= b.b + TOL);
+  return {
+    E, W, poly, xs, ys, cs, beams, cutX, cutY, X, Y, nx, ny, inPoly, active, blockKind, cantCell, edges, unitOf, units, comps,
+    totalArea, C, Cgiven: inp.C > 0, Nmin: Math.ceil(C / inp.P - 1e-9), maxUnit, onBeam,
+    stats: { okN, ngN, why }, walls: inp.walls, openings: inp.openings, P: inp.P
+  };
+}
+
+// ----- 구역 배정: 씨앗 확장 (규칙 6) -----
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+function pickSeeds(M, N, rnd) {
+  const U = M.units; if (M.comps.length > N) return null;
+  const seeds = [];
+  for (const c of M.comps) seeds.push(c[Math.floor(rnd() * c.length)]);
+  while (seeds.length < N) {
+    let best = -1, bs = -1;
+    for (let u = 0; u < U.length; u++) {
+      if (seeds.includes(u)) continue;
+      let d = Infinity; for (const s of seeds) d = Math.min(d, Math.hypot(U[u].cx - U[s].cx, U[u].cy - U[s].cy));
+      const sc = d * (0.55 + 0.45 * rnd());
+      if (sc > bs) { bs = sc; best = u; }
+    }
+    if (best < 0) return null;
+    seeds.push(best);
+  }
+  return seeds;
+}
+
+function grow(U, seeds, P) {
+  const z = new Int32Array(U.length).fill(-1);
+  const Z = seeds.map((s, k) => { z[s] = k; return { vol: U[s].vol, ax: U[s].cx * U[s].area, ay: U[s].cy * U[s].area, ar: U[s].area, list: [s] }; });
+  let left = U.length - seeds.length;
+  while (left > 0) {
+    const order = Z.map((_, k) => k).sort((a, b) => Z[a].vol - Z[b].vol);
+    let pick = -1, pz = -1;
+    for (const k of order) {
+      const zk = Z[k], gx = zk.ax / zk.ar, gy = zk.ay / zk.ar, cand = new Map();
+      for (const u of zk.list) for (const [v, len] of U[u].nb) {
+        if (z[v] !== -1 || zk.vol + U[v].vol > P + 1e-9) continue;
+        cand.set(v, (cand.get(v) || 0) + len);
+      }
+      let best = Infinity;
+      for (const [v, len] of cand) { const s = Math.hypot(U[v].cx - gx, U[v].cy - gy) - 0.5 * len; if (s < best) { best = s; pick = v; } }
+      if (pick >= 0) { pz = k; break; }
+    }
+    if (pick < 0) return null;
+    z[pick] = pz; const zk = Z[pz], u = U[pick];
+    zk.vol += u.vol; zk.ax += u.cx * u.area; zk.ay += u.cy * u.area; zk.ar += u.area; zk.list.push(pick); left--;
+  }
+  return z;
+}
+
+function stillConnected(U, z, A, skip) {
+  let start = -1, total = 0;
+  for (let u = 0; u < U.length; u++) if (z[u] === A && u !== skip) { total++; if (start < 0) start = u; }
+  if (start < 0) return false;
+  const seen = new Set([start]), st = [start];
+  while (st.length) { const u = st.pop(); for (const [v] of U[u].nb) if (v !== skip && z[v] === A && !seen.has(v)) { seen.add(v); st.push(v); } }
+  return seen.size === total;
+}
+
+function improve(U, z, N, P, T, guard) {
+  const vol = new Float64Array(N), cnt = new Int32Array(N);
+  U.forEach((u, i) => { vol[z[i]] += u.vol; cnt[z[i]]++; });
+  for (let pass = 0; pass < 300; pass++) {
+    let moved = false;
+    for (let u = 0; u < U.length && !moved; u++) {
+      const A = z[u]; if (cnt[A] <= 1) continue;
+      for (const [v] of U[u].nb) {
+        const B = z[v]; if (B === A) continue;
+        const vu = U[u].vol; if (vol[B] + vu > P + 1e-9) continue;
+        const before = (vol[A] - T) ** 2 + (vol[B] - T) ** 2, after = (vol[A] - vu - T) ** 2 + (vol[B] + vu - T) ** 2;
+        if (after < before - 1e-9 && (!guard || guard(u, B)) && stillConnected(U, z, A, u)) { z[u] = B; vol[A] -= vu; vol[B] += vu; cnt[A]--; cnt[B]++; moved = true; break; }
+      }
+    }
+    if (!moved) break;
+  }
+}
+
+
+// 가장 큰 구역의 가장자리 조각을 이웃 구역으로 넘겨 최대 물량을 낮춤 (하루 한도 맞추기)
+function shaveMax(U, z, N) {
+  const vol = new Float64Array(N), cnt = new Int32Array(N);
+  U.forEach((u, i) => { vol[z[i]] += u.vol; cnt[z[i]]++; });
+  for (let it = 0; it < 400; it++) {
+    let A = 0; for (let k = 1; k < N; k++) if (vol[k] > vol[A]) A = k;
+    if (cnt[A] <= 1) break;
+    let best = null;
+    for (let u = 0; u < U.length; u++) {
+      if (z[u] !== A) continue;
+      const vu = U[u].vol;
+      for (const [v] of U[u].nb) {
+        const B = z[v]; if (B === A) continue;
+        const newMax = Math.max(vol[A] - vu, vol[B] + vu);
+        if (newMax < vol[A] - 1e-9 && (!best || newMax < best.m - 1e-9)) best = { u, B, m: newMax };
+      }
+    }
+    if (!best) break;
+    // 연결 유지 확인 (안 되면 다음 후보를 찾기 위해 그 조각을 제외하고 재시도)
+    if (!stillConnected(U, z, A, best.u)) {
+      let ok = false;
+      const cands = [];
+      for (let u = 0; u < U.length; u++) if (z[u] === A) for (const [v] of U[u].nb) { const B = z[v]; if (B !== A) { const m = Math.max(vol[A] - U[u].vol, vol[B] + U[u].vol); if (m < vol[A] - 1e-9) cands.push({ u, B, m }); } }
+      cands.sort((a, b) => a.m - b.m);
+      for (const c of cands) if (stillConnected(U, z, A, c.u)) { best = c; ok = true; break; }
+      if (!ok) break;
+    }
+    const vu = U[best.u].vol;
+    z[best.u] = best.B; vol[A] -= vu; vol[best.B] += vu; cnt[A]--; cnt[best.B]++;
+  }
+}
+
+
+function maxOf(U, z, N) { const v = new Float64Array(N); U.forEach((u, i) => { v[z[i]] += u.vol; }); return Math.max(...v); }
+function improveCapped(U, z, N, P, T) { improve(U, z, N, P, T); }
+// 한도 초과가 남으면: 무작위 이동을 조금씩 허용하며(담금질) 한도 안으로 끌어들임
+function anneal(U, z, N, P, T, rnd) {
+  const vol = new Float64Array(N), cnt = new Int32Array(N);
+  U.forEach((u, i) => { vol[z[i]] += u.vol; cnt[z[i]]++; });
+  const c1 = v => 8 * Math.max(0, v - P) / T + ((v - T) / T) ** 2;
+  const iters = Math.min(20000, 60 * U.length);
+  let temp = 0.3;
+  const cool = Math.pow(0.002 / temp, 1 / iters);
+  for (let it = 0; it < iters; it++, temp *= cool) {
+    const u = Math.floor(rnd() * U.length), A = z[u];
+    if (cnt[A] <= 1) continue;
+    const nbs = []; for (const [v] of U[u].nb) if (z[v] !== A && !nbs.includes(z[v])) nbs.push(z[v]);
+    if (!nbs.length) continue;
+    const B = nbs[Math.floor(rnd() * nbs.length)], vu = U[u].vol;
+    const d = c1(vol[A] - vu) + c1(vol[B] + vu) - c1(vol[A]) - c1(vol[B]);
+    if (d > 0 && rnd() >= Math.exp(-d / temp)) continue;
+    if (!stillConnected(U, z, A, u)) continue;
+    z[u] = B; vol[A] -= vu; vol[B] += vu; cnt[A]--; cnt[B]++;
+    if (Math.max(...vol) <= P + 1e-6 && temp < 0.02) break;
+  }
+}
+
+
+// 규칙 3: 한 꼭짓점에서 경계가 꺾였는데 그 점이 보·기둥 위가 아니면 위반
+function bendAtNode(M, z, nid) {
+  const { nx, ny, active, unitOf, blockKind } = M, i = nid % (nx + 1), j = (nid - i) / (nx + 1);
+  if (i < 1 || j < 1 || i >= nx || j >= ny) return 0;
+  // 벽은 스톱엔드를 받쳐 주므로 지지부로 보고 검사 제외. 개구부·슬래브 밖은 지지부가 아니므로 검사한다
+  const zc = (a, b) => { const k = b * nx + a; return active[k] ? z[unitOf[k]] : (blockKind[k] === 1 ? -3 : -2); };
+  const sw = zc(i - 1, j - 1), se = zc(i, j - 1), nw = zc(i - 1, j), ne = zc(i, j);
+  if (sw === -3 || se === -3 || nw === -3 || ne === -3) return 0;
+  const cut = (p, q) => (p >= 0 && q >= 0 && p !== q);
+  const n = cut(nw, ne), s = cut(sw, se), w = cut(sw, nw), e = cut(se, ne);
+  return (n + s + w + e === 2 && !(n && s) && !(w && e) && !M.onBeam(M.X[i], M.Y[j])) ? 1 : 0;
+}
+function bendDelta(M, z, u, B) {
+  const A = z[u]; let before = 0, after = 0;
+  for (const nd of M.units[u].nodes) before += bendAtNode(M, z, nd);
+  z[u] = B; for (const nd of M.units[u].nodes) after += bendAtNode(M, z, nd); z[u] = A;
+  return after - before;
+}
+function repairBends(M, z, N, P, rnd) {
+  const U = M.units, vol = new Float64Array(N), cnt = new Int32Array(N);
+  U.forEach((u, i) => { vol[z[i]] += u.vol; cnt[z[i]]++; });
+  const { nx, ny } = M;
+  for (let it = 0; it < 300; it++) {
+    const bad = [];
+    for (let j = 1; j < ny; j++) for (let i = 1; i < nx; i++) { const nd = j * (nx + 1) + i; if (bendAtNode(M, z, nd)) bad.push([i, j]); }
+    if (!bad.length) return true;
+    for (let q = bad.length - 1; q > 0; q--) { const w = Math.floor(rnd() * (q + 1)); [bad[q], bad[w]] = [bad[w], bad[q]]; }
+    let moved = false;
+    for (const [i, j] of bad) {
+      const us = new Set();
+      for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) { const k = b * nx + a; if (M.active[k]) us.add(M.unitOf[k]); }
+      for (const u of us) {
+        const A = z[u]; if (cnt[A] <= 1) continue;
+        for (const [v] of U[u].nb) {
+          const B = z[v]; if (B === A || vol[B] + U[u].vol > P + 1e-9) continue;
+          if (bendDelta(M, z, u, B) < 0 && stillConnected(U, z, A, u)) { z[u] = B; vol[A] -= U[u].vol; vol[B] += U[u].vol; cnt[A]--; cnt[B]++; moved = true; break; }
+        }
+        if (moved) break;
+      }
+      if (moved) break;
+    }
+    if (!moved) return false;
+  }
+  return false;
+}
+
+// 규칙 3 점검: 슬래브 한가운데(보 위가 아닌 곳)에서 꺾인 지점
+function computeBends(M, z) {
+  const { X, Y, nx, ny, active, unitOf } = M, pts = [];
+  const zc = (i, j) => { const k = j * nx + i; return active[k] ? z[unitOf[k]] : -2; };
+  for (let j = 1; j < ny; j++) for (let i = 1; i < nx; i++) {
+    const sw = zc(i - 1, j - 1), se = zc(i, j - 1), nw = zc(i - 1, j), ne = zc(i, j);
+    if (sw < 0 || se < 0 || nw < 0 || ne < 0) continue;
+    const n = nw !== ne, s = sw !== se, w = sw !== nw, e = se !== ne;
+    if (n + s + w + e === 2 && !(n && s) && !(w && e) && !M.onBeam(X[i], Y[j])) pts.push([X[i], Y[j]]);
+  }
+  return pts;
+}
+
+function evaluate(M, z, N, T) {
+  const vol = Array(N).fill(0), area = Array(N).fill(0), joint = Array(N).fill(0);
+  M.units.forEach((u, i) => { vol[z[i]] += u.vol; area[z[i]] += u.area; });
+  let total = 0;
+  for (const e of M.edges) {
+    if (e.A < 0) continue;
+    const a = z[M.unitOf[e.A]], b = z[M.unitOf[e.B]];
+    if (a !== b) { total += e.len; joint[a] += e.len; joint[b] += e.len; }
+  }
+  const bends = computeBends(M, z);
+  const maxDev = Math.max(...vol.map(v => Math.abs(v - T))) / T;
+  const score = maxDev + 0.01 * total / Math.sqrt(M.totalArea);
+  return { vol, area, joint, total, bends, maxDev, score, maxVol: Math.max(...vol), minVol: Math.min(...vol) };
+}
+
+function solve(M, N, P, restarts, seed) {
+  const rnd = mulberry32(seed || 20261010), T = M.C / N, raw = []; let overP = 0, bentN = 0;
+  for (let r = 0; r < restarts; r++) {
+    const seeds = pickSeeds(M, N, rnd); if (!seeds) break;
+    const z = grow(M.units, seeds, Infinity); if (!z) continue;
+    improve(M.units, z, N, Infinity, T);
+    shaveMax(M.units, z, N);
+    improve(M.units, z, N, Infinity, T);
+    shaveMax(M.units, z, N);
+    if (maxOf(M.units, z, N) > P + 1e-6) anneal(M.units, z, N, P, T, rnd);
+    if (maxOf(M.units, z, N) > P + 1e-6) { overP++; continue; }
+    // 규칙 3(꺾임은 보·기둥 위) 맞추기 → 꺾임을 늘리지 않는 범위에서 다시 물량 균형
+    repairBends(M, z, N, P, rnd);
+    improve(M.units, z, N, P, T, (u, B) => bendDelta(M, z, u, B) <= 0);
+    const ev = evaluate(M, z, N, T);
+    if (ev.maxVol > P + 1e-6) { overP++; continue; }
+    if (ev.bends.length) { bentN++; continue; } // 규칙 3 위반 → 후보에서 제외
+    raw.push({ z: Array.from(z), ...ev });
+  }
+  // 구역 번호만 다른 같은 배정 제거 → 점수순
+  const seen = new Set(), uniq = [];
+  for (const s of raw) {
+    const map = new Map();
+    const key = s.z.map(k => { if (!map.has(k)) map.set(k, map.size); return map.get(k); }).join(',');
+    if (!seen.has(key)) { seen.add(key); s.N = N; s.T = T; uniq.push(s); }
+  }
+  uniq.sort((a, b) => a.score - b.score);
+  return { sols: uniq, tried: restarts, found: raw.length, overP, bentN, T };
+}
+
+// 타설 방법 후보 추천: 사용자가 정한 N구역 안에서, 규칙을 모두 지키면서 서로 충분히 다른 배정을 want개까지
+function recommend(M, N, P, restarts, want) {
+  want = want || 10;
+  const pairs = [];
+  M.units.forEach((u, i) => { for (const [v] of u.nb) if (i < v) pairs.push([i, v]); });
+  const diff = (a, b) => { let d = 0; for (const [i, v] of pairs) if ((a.z[i] === a.z[v]) !== (b.z[i] === b.z[v])) d++; return d; };
+  const R = solve(M, N, P, restarts, 20261010 + N);
+  const picked = [];
+  for (const minD of [3, 1]) for (const s of R.sols) {
+    if (picked.length >= want) break;
+    if (!picked.includes(s) && picked.every(p => diff(p, s) >= minD)) picked.push(s);
+  }
+  picked.sort((a, b) => a.score - b.score);
+  if (picked.length > 1) {
+    const tag = (fn, label) => { let b = null; for (const s of picked) if (!b || fn(s) < fn(b) - 1e-9) b = s; if (b) (b.tags = b.tags || []).push(label); };
+    tag(s => s.maxDev + 1e-5 * s.total, '물량 균형 최고');
+    tag(s => s.total + 1e-3 * s.maxDev, '이음 최소');
+  }
+  picked.forEach(s => { s.tags = s.tags || []; });
+  return { sols: picked, T: M.C / N, tried: restarts, overP: R.overP, bentN: R.bentN, found: R.found };
+}
+// ===== CORE-END =====
+// ===== IFC-START : Revit에서 내보낸 IFC 읽기 (외부 라이브러리 없이 직접 해석) =====
+const IFCReader = (() => {
+  const V = {
+    add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+    sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+    mul: (a, s) => [a[0] * s, a[1] * s, a[2] * s],
+    dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+    cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+    norm: a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+  };
+  const I3 = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1], o: [0, 0, 0] };
+  const apply = (F, p) => [F.o[0] + F.x[0] * p[0] + F.y[0] * p[1] + F.z[0] * p[2], F.o[1] + F.x[1] * p[0] + F.y[1] * p[1] + F.z[1] * p[2], F.o[2] + F.x[2] * p[0] + F.y[2] * p[1] + F.z[2] * p[2]];
+  const applyDir = (F, d) => [F.x[0] * d[0] + F.y[0] * d[1] + F.z[0] * d[2], F.x[1] * d[0] + F.y[1] * d[1] + F.z[1] * d[2], F.x[2] * d[0] + F.y[2] * d[1] + F.z[2] * d[2]];
+  const compose = (A, B) => ({ x: applyDir(A, B.x), y: applyDir(A, B.y), z: applyDir(A, B.z), o: apply(A, B.o) });
+
+  function decodeStr(s) {
+    return s.replace(/''/g, "'")
+      .replace(/\\X2\\([0-9A-Fa-f]+)\\X0\\/g, (m, h) => { let o = ''; for (let i = 0; i + 4 <= h.length; i += 4) o += String.fromCharCode(parseInt(h.substr(i, 4), 16)); return o; })
+      .replace(/\\X\\([0-9A-Fa-f]{2})/g, (m, h) => String.fromCharCode(parseInt(h, 16)))
+      .replace(/\\S\\(.)/g, (m, c) => String.fromCharCode(c.charCodeAt(0) + 128));
+  }
+
+  function parse(text) {
+    const ents = new Map(), byType = new Map();
+    let i = text.indexOf('DATA;');
+    if (i < 0) throw new Error('IFC 파일 형식이 아닙니다 (DATA 구역 없음).');
+    i += 5; const n = text.length;
+    while (i < n) {
+      const h = text.indexOf('#', i); if (h < 0) break;
+      let j = h + 1, id = 0;
+      while (j < n) { const c = text.charCodeAt(j); if (c < 48 || c > 57) break; id = id * 10 + c - 48; j++; }
+      while (j < n && text.charCodeAt(j) <= 32) j++;
+      if (text[j] !== '=') { i = j; continue; }
+      j++; while (j < n && text.charCodeAt(j) <= 32) j++;
+      const ts = j; while (j < n && text[j] !== '(') j++;
+      const type = text.slice(ts, j).trim().toUpperCase();
+      const as = j; let inStr = false;
+      while (j < n) {
+        const c = text.charCodeAt(j);
+        if (inStr) { if (c === 39) { if (text.charCodeAt(j + 1) === 39) j++; else inStr = false; } }
+        else if (c === 39) inStr = true;
+        else if (c === 59) break;
+        j++;
+      }
+      ents.set(id, { t: type, s: as, e: j, a: null });
+      let l = byType.get(type); if (!l) byType.set(type, l = []); l.push(id);
+      i = j + 1;
+    }
+    if (!ents.size) throw new Error('IFC 파일에서 객체를 찾지 못했습니다.');
+
+    function parseArgs(str) {
+      let p = 0; const L = str.length;
+      const ws = () => { while (p < L && str.charCodeAt(p) <= 32) p++; };
+      function val() {
+        ws(); const c = str[p];
+        if (c === '(') {
+          p++; const arr = [];
+          for (;;) { ws(); if (p >= L) break; if (str[p] === ')') { p++; break; } arr.push(val()); ws(); if (str[p] === ',') { p++; continue; } if (str[p] === ')') { p++; break; } p++; }
+          return arr;
+        }
+        if (c === "'") {
+          p++; const st = p;
+          for (;;) { if (p >= L) break; if (str[p] === "'") { if (str[p + 1] === "'") { p += 2; continue; } break; } p++; }
+          const s = str.slice(st, p); p++; return decodeStr(s);
+        }
+        if (c === '#') { p++; let v = 0; while (p < L) { const d = str.charCodeAt(p); if (d < 48 || d > 57) break; v = v * 10 + d - 48; p++; } return { r: v }; }
+        if (c === '$' || c === '*') { p++; return null; }
+        if (c === '.') { const e = str.indexOf('.', p + 1); const v = str.slice(p + 1, e); p = e + 1; return { e: v }; }
+        if (/[A-Za-z]/.test(c)) { const st = p; while (p < L && /[A-Za-z0-9_]/.test(str[p])) p++; const nm = str.slice(st, p); ws(); if (str[p] === '(') { const inner = val(); return inner.length === 1 ? inner[0] : inner; } return { e: nm }; }
+        const st = p; while (p < L && '+-0123456789.Ee'.indexOf(str[p]) >= 0) p++;
+        return parseFloat(str.slice(st, p));
+      }
+      return val();
+    }
+    const A = id => { const e = ents.get(id); if (!e) return null; if (!e.a) e.a = parseArgs(text.slice(e.s, e.e)); return e.a; };
+    const T = id => { const e = ents.get(id); return e ? e.t : null; };
+    const R = v => (v && typeof v === 'object' && 'r' in v) ? v.r : null;
+    const list = t => byType.get(t) || [];
+
+    // 단위
+    let lenScale = 1, angScale = 1; // 파일 단위 → m, rad
+    const siPrefix = { EXA: 1e18, PETA: 1e15, TERA: 1e12, GIGA: 1e9, MEGA: 1e6, KILO: 1e3, HECTO: 1e2, DECA: 10, DECI: 0.1, CENTI: 0.01, MILLI: 1e-3, MICRO: 1e-6 };
+    function unitScale(uid) {
+      const t = T(uid), a = A(uid); if (!a) return null;
+      if (t === 'IFCSIUNIT') return a[2] && a[2].e ? (siPrefix[a[2].e] || 1) : 1;
+      if (t === 'IFCCONVERSIONBASEDUNIT' || t === 'IFCCONVERSIONBASEDUNITWITHOFFSET') {
+        const mw = A(R(a[3])); if (!mw) return null;
+        const v = Array.isArray(mw[0]) ? mw[0][0] : mw[0]; const base = unitScale(R(mw[1]));
+        return v * (base || 1);
+      }
+      return null;
+    }
+    const proj = list('IFCPROJECT')[0];
+    const projName = proj ? (A(proj)[2] || A(proj)[7] || '') : '';
+    if (proj) {
+      const ua = A(R(A(proj)[8]));
+      if (ua) for (const u of ua[0] || []) {
+        const uid = R(u), a = A(uid); if (!a) continue;
+        const ut = a[1] && a[1].e;
+        if (ut === 'LENGTHUNIT') { const s = unitScale(uid); if (s) lenScale = s; }
+        if (ut === 'PLANEANGLEUNIT') { const s = unitScale(uid); if (s) angScale = s; }
+      }
+    }
+
+    // 좌표계
+    const pt = id => { const a = A(id); const c = (a && a[0]) || [0, 0, 0]; return [c[0] || 0, c[1] || 0, c[2] || 0]; };
+    const dir = id => { const a = A(id); const c = (a && a[0]) || [1, 0, 0]; return [c[0] || 0, c[1] || 0, c[2] || 0]; };
+    function frame3(id) {
+      const a = A(id); if (!a) return I3;
+      if (T(id) === 'IFCAXIS2PLACEMENT2D') return frame2(id);
+      const o = R(a[0]) ? pt(R(a[0])) : [0, 0, 0];
+      const z = R(a[1]) ? V.norm(dir(R(a[1]))) : [0, 0, 1];
+      let x0 = R(a[2]) ? dir(R(a[2])) : [1, 0, 0];
+      let x = V.sub(x0, V.mul(z, V.dot(x0, z)));
+      if (Math.hypot(...x) < 1e-9) x = Math.abs(z[0]) < 0.9 ? V.sub([1, 0, 0], V.mul(z, z[0])) : V.sub([0, 1, 0], V.mul(z, z[1]));
+      x = V.norm(x);
+      return { x, y: V.cross(z, x), z, o };
+    }
+    function frame2(id) {
+      const a = A(id); if (!a) return I3;
+      const o = R(a[0]) ? pt(R(a[0])) : [0, 0, 0];
+      let x = R(a[1]) ? dir(R(a[1])) : [1, 0, 0]; x = V.norm([x[0], x[1], 0]);
+      return { x, y: [-x[1], x[0], 0], z: [0, 0, 1], o: [o[0], o[1], 0] };
+    }
+    const plCache = new Map();
+    function placement(id) {
+      if (!id) return I3;
+      if (plCache.has(id)) return plCache.get(id);
+      plCache.set(id, I3);
+      const a = A(id); let F = I3;
+      if (T(id) === 'IFCLOCALPLACEMENT' && a) F = compose(placement(R(a[0])), frame3(R(a[1])));
+      plCache.set(id, F); return F;
+    }
+    function ctop(id) { // IfcCartesianTransformationOperator
+      const a = A(id); if (!a) return I3;
+      const t = T(id), is2 = t.indexOf('2D') >= 0;
+      const o = R(a[2]) ? pt(R(a[2])) : [0, 0, 0]; const s = typeof a[3] === 'number' ? a[3] : 1;
+      let x = R(a[0]) ? V.norm(dir(R(a[0]))) : [1, 0, 0], y = R(a[1]) ? V.norm(dir(R(a[1]))) : [-x[1], x[0], 0];
+      let z = !is2 && R(a[4]) ? V.norm(dir(R(a[4]))) : V.norm(V.cross(x, y));
+      const sx = s, sy = (t.indexOf('NONUNIFORM') >= 0 && typeof a[is2 ? 4 : 5] === 'number') ? a[is2 ? 4 : 5] : s;
+      const sz = (t.indexOf('NONUNIFORM') >= 0 && !is2 && typeof a[6] === 'number') ? a[6] : s;
+      return { x: V.mul(x, sx), y: V.mul(y, sy), z: V.mul(z, sz), o: [o[0], o[1], o[2] || 0] };
+    }
+
+    // 곡선 → 2D 점
+    function curvePts(id) {
+      const t = T(id), a = A(id); if (!a) return [];
+      if (t === 'IFCPOLYLINE') return (a[0] || []).map(r => pt(R(r)));
+      if (t === 'IFCINDEXEDPOLYCURVE') { const pl = A(R(a[0])); return pl ? (pl[0] || []).map(c => [c[0], c[1], c[2] || 0]) : []; }
+      if (t === 'IFCCOMPOSITECURVE' || t === 'IFCCOMPOSITECURVEONSURFACE') {
+        let out = [];
+        for (const s of a[0] || []) {
+          const sa = A(R(s)); if (!sa) continue;
+          let p = curvePts(R(sa[2])); if (sa[1] && sa[1].e === 'F') p = p.slice().reverse();
+          if (out.length && p.length && Math.hypot(out[out.length - 1][0] - p[0][0], out[out.length - 1][1] - p[0][1]) < 1e-6) p = p.slice(1);
+          out = out.concat(p);
+        }
+        return out;
+      }
+      if (t === 'IFCTRIMMEDCURVE') {
+        const bt = T(R(a[0])), ba = A(R(a[0])); const sense = !(a[3] && a[3].e === 'F');
+        const trimPt = tr => { for (const v of tr || []) if (R(v) && T(R(v)) === 'IFCCARTESIANPOINT') return pt(R(v)); return null; };
+        const trimPar = tr => { for (const v of tr || []) if (typeof v === 'number') return v; return null; };
+        if (bt === 'IFCCIRCLE' || bt === 'IFCELLIPSE') {
+          const F = frame3(R(ba[0])), r1 = ba[1], r2 = bt === 'IFCELLIPSE' ? ba[2] : ba[1];
+          const angOf = (tr) => {
+            const q = trimPt(tr);
+            if (q) { const d = V.sub(q, F.o); return Math.atan2(V.dot(d, F.y) / r2, V.dot(d, F.x) / r1); }
+            const pv = trimPar(tr); return pv === null ? 0 : pv * angScale;
+          };
+          let t1 = angOf(a[1]), t2 = angOf(a[2]);
+          if (sense) { while (t2 <= t1) t2 += 2 * Math.PI; } else { while (t2 >= t1) t2 -= 2 * Math.PI; }
+          const out = [], k = 6;
+          for (let s = 0; s <= k; s++) { const th = t1 + (t2 - t1) * s / k; out.push(apply(F, [r1 * Math.cos(th), r2 * Math.sin(th), 0])); }
+          return out;
+        }
+        const p1 = trimPt(a[1]), p2 = trimPt(a[2]);
+        if (p1 && p2) return sense ? [p1, p2] : [p2, p1];
+        if (bt === 'IFCLINE') {
+          const lp = pt(R(ba[0])), vv = A(R(ba[1])), d = V.norm(dir(R(vv[0]))), mag = vv[1] || 1;
+          const q = s => V.add(lp, V.mul(d, s * mag));
+          const s1 = trimPar(a[1]) || 0, s2 = trimPar(a[2]) || 0;
+          return sense ? [q(s1), q(s2)] : [q(s2), q(s1)];
+        }
+        return [];
+      }
+      if (t === 'IFCCIRCLE' || t === 'IFCELLIPSE') {
+        const F = frame3(R(a[0])), r1 = a[1], r2 = t === 'IFCELLIPSE' ? a[2] : a[1], out = [];
+        for (let s = 0; s < 16; s++) { const th = 2 * Math.PI * s / 16; out.push(apply(F, [r1 * Math.cos(th), r2 * Math.sin(th), 0])); }
+        return out;
+      }
+      return [];
+    }
+    const rectPts = (w, h) => [[-w / 2, -h / 2, 0], [w / 2, -h / 2, 0], [w / 2, h / 2, 0], [-w / 2, h / 2, 0]];
+    function profile(id) { // {outer:[[x,y,0]], inner:[[...]]} 프로파일 좌표계
+      const t = T(id), a = A(id); if (!a) return null;
+      const pos = () => R(a[2]) ? frame3(R(a[2])) : I3;
+      const map = (F, ps) => ps.map(p => apply(F, p));
+      if (t === 'IFCRECTANGLEPROFILEDEF' || t === 'IFCRECTANGLEHOLLOWPROFILEDEF' || t === 'IFCROUNDEDRECTANGLEPROFILEDEF') return { outer: map(pos(), rectPts(a[3], a[4])), inner: [] };
+      if (t === 'IFCISHAPEPROFILEDEF' || t === 'IFCASYMMETRICISHAPEPROFILEDEF') return { outer: map(pos(), rectPts(a[3], a[4])), inner: [] };
+      if (['IFCUSHAPEPROFILEDEF', 'IFCCSHAPEPROFILEDEF', 'IFCTSHAPEPROFILEDEF', 'IFCLSHAPEPROFILEDEF', 'IFCZSHAPEPROFILEDEF'].includes(t)) return { outer: map(pos(), rectPts(a[4], a[3])), inner: [] };
+      if (t === 'IFCCIRCLEPROFILEDEF' || t === 'IFCCIRCLEHOLLOWPROFILEDEF') { const r = a[3], ps = []; for (let s = 0; s < 12; s++) { const th = 2 * Math.PI * s / 12; ps.push([r * Math.cos(th), r * Math.sin(th), 0]); } return { outer: map(pos(), ps), inner: [] }; }
+      if (t === 'IFCARBITRARYCLOSEDPROFILEDEF') return { outer: curvePts(R(a[2])), inner: [] };
+      if (t === 'IFCARBITRARYPROFILEDEFWITHVOIDS') return { outer: curvePts(R(a[2])), inner: (a[3] || []).map(c => curvePts(R(c))) };
+      if (t === 'IFCDERIVEDPROFILEDEF') { const p = profile(R(a[2])); if (!p) return null; const F = ctop(R(a[3])); return { outer: map(F, p.outer), inner: p.inner.map(q => map(F, q)) }; }
+      if (t === 'IFCCOMPOSITEPROFILEDEF') { let o = []; for (const r of a[2] || []) { const p = profile(R(r)); if (p) o = o.concat(p.outer); } return { outer: o, inner: [] }; }
+      return null;
+    }
+    const area2 = ps => { let s = 0; for (let i = 0; i < ps.length; i++) { const p = ps[i], q = ps[(i + 1) % ps.length]; s += p[0] * q[1] - q[0] * p[1]; } return Math.abs(s) / 2; };
+
+    // 형상 항목 → 점·압출 정보
+    function items(id, F, out, depth) {
+      if (depth > 12) return;
+      const t = T(id), a = A(id); if (!a) return;
+      if (t === 'IFCEXTRUDEDAREASOLID' || t === 'IFCEXTRUDEDAREASOLIDTAPERED') {
+        const p = profile(R(a[0])); if (!p || !p.outer.length) return;
+        const G = compose(F, R(a[1]) ? frame3(R(a[1])) : I3);
+        const d = V.mul(V.norm(dir(R(a[2]))), a[3]);
+        const bot = p.outer.map(q => apply(G, q)), top = p.outer.map(q => apply(G, V.add(q, d)));
+        out.pts.push(...bot, ...top);
+        const wd = applyDir(G, d), len = Math.hypot(...wd);
+        const ar = area2(p.outer) - p.inner.reduce((s, q) => s + area2(q), 0);
+        out.ext.push({ outer: bot, inner: p.inner.map(q => q.map(r => apply(G, r))), dirZ: len ? Math.abs(wd[2]) / len : 0, len, area: ar, vol: ar * a[3] * Math.abs(V.norm(dir(R(a[2])))[2] || 1) });
+        return;
+      }
+      if (t === 'IFCBOOLEANCLIPPINGRESULT' || t === 'IFCBOOLEANRESULT') {
+        items(R(a[1]), F, out, depth + 1);
+        if (a[0] && a[0].e === 'UNION') items(R(a[2]), F, out, depth + 1);
+        return;
+      }
+      if (t === 'IFCMAPPEDITEM') {
+        const rm = A(R(a[0])); if (!rm) return;
+        const G = compose(compose(F, ctop(R(a[1]))), frame3(R(rm[0])));
+        const sr = A(R(rm[1])); if (!sr) return;
+        for (const it of sr[3] || []) items(R(it), G, out, depth + 1);
+        return;
+      }
+      if (t === 'IFCFACETEDBREP' || t === 'IFCFACETEDBREPWITHVOIDS' || t === 'IFCMANIFOLDSOLIDBREP') { shell(R(a[0]), F, out); return; }
+      if (t === 'IFCSHELLBASEDSURFACEMODEL') { for (const s of a[0] || []) shell(R(s), F, out); return; }
+      if (t === 'IFCFACEBASEDSURFACEMODEL') { for (const s of a[0] || []) shell(R(s), F, out); return; }
+      if (t === 'IFCPOLYGONALFACESET' || t === 'IFCTRIANGULATEDFACESET' || t === 'IFCTRIANGULATEDIRREGULARNETWORK') { const pl = A(R(a[0])); if (pl) for (const c of pl[0] || []) out.pts.push(apply(F, [c[0], c[1], c[2] || 0])); return; }
+      if (t === 'IFCBOUNDINGBOX') { const c = pt(R(a[0])); for (const dx of [0, a[1]]) for (const dy of [0, a[2]]) for (const dz of [0, a[3]]) out.pts.push(apply(F, [c[0] + dx, c[1] + dy, c[2] + dz])); return; }
+    }
+    function shell(id, F, out) {
+      const a = A(id); if (!a) return; const seen = new Set();
+      for (const f of a[0] || []) {
+        const fa = A(R(f)); if (!fa) continue;
+        for (const b of fa[0] || []) {
+          const ba = A(R(b)); if (!ba) continue; const lp = A(R(ba[0])); if (!lp) continue;
+          for (const r of lp[0] || []) { const q = R(r); if (q && !seen.has(q)) { seen.add(q); out.pts.push(apply(F, pt(q))); } }
+        }
+      }
+    }
+    function geom(pid) {
+      const a = A(pid); if (!a) return null;
+      const F = placement(R(a[5]));
+      const pds = A(R(a[6])); if (!pds) return null;
+      const reps = (pds[2] || []).map(R).filter(Boolean);
+      const idOf = r => { const ra = A(r); return ra && typeof ra[1] === 'string' ? ra[1] : ''; };
+      let use = reps.filter(r => idOf(r) === 'Body');
+      if (!use.length) use = reps.filter(r => !['Axis', 'FootPrint', 'Annotation', 'Box', 'Profile'].includes(idOf(r)));
+      if (!use.length) use = reps.filter(r => idOf(r) === 'Box');
+      const out = { pts: [], ext: [] };
+      for (const r of use) for (const it of (A(r)[3] || [])) items(R(it), F, out, 0);
+      if (!out.pts.length) return null;
+      const s = lenScale; let mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+      for (const p of out.pts) for (let k = 0; k < 3; k++) { if (p[k] < mn[k]) mn[k] = p[k]; if (p[k] > mx[k]) mx[k] = p[k]; }
+      return {
+        min: mn.map(v => v * s), max: mx.map(v => v * s),
+        ext: out.ext.map(e => ({ outer: e.outer.map(p => [p[0] * s, p[1] * s, p[2] * s]), inner: e.inner.map(q => q.map(p => [p[0] * s, p[1] * s])), dirZ: e.dirZ, len: e.len * s, area: e.area * s * s, vol: e.vol * s * s * s }))
+      };
+    }
+
+    // 층·포함관계
+    const contained = new Map();
+    for (const rid of list('IFCRELCONTAINEDINSPATIALSTRUCTURE')) {
+      const a = A(rid); const st = R(a[5]); if (!st) continue;
+      let l = contained.get(st); if (!l) contained.set(st, l = []);
+      for (const r of a[4] || []) if (R(r)) l.push(R(r));
+    }
+    const voids = new Map();
+    for (const rid of list('IFCRELVOIDSELEMENT')) {
+      const a = A(rid); const el = R(a[4]), op = R(a[5]); if (!el || !op) continue;
+      let l = voids.get(el); if (!l) voids.set(el, l = []); l.push(op);
+    }
+    const TYPES = {
+      slab: ['IFCSLAB', 'IFCSLABSTANDARDCASE', 'IFCSLABELEMENTEDCASE'],
+      column: ['IFCCOLUMN', 'IFCCOLUMNSTANDARDCASE'],
+      beam: ['IFCBEAM', 'IFCBEAMSTANDARDCASE'],
+      wall: ['IFCWALL', 'IFCWALLSTANDARDCASE', 'IFCWALLELEMENTEDCASE']
+    };
+    const kindOf = id => { const t = T(id); for (const k in TYPES) if (TYPES[k].includes(t)) return k; return null; };
+    const storeys = list('IFCBUILDINGSTOREY').map(id => {
+      const a = A(id), els = contained.get(id) || [], c = { slab: 0, column: 0, beam: 0, wall: 0 };
+      for (const e of els) { const k = kindOf(e); if (k) c[k]++; }
+      return { id, name: a[2] || a[7] || ('#' + id), elev: (typeof a[9] === 'number' ? a[9] : 0) * lenScale, count: c };
+    }).sort((p, q) => p.elev - q.elev);
+    const allOf = k => TYPES[k].flatMap(list);
+    const gcache = new Map();
+    const G = id => { if (!gcache.has(id)) { let g = null; try { g = geom(id); } catch (e) { g = null; } gcache.set(id, g); } return gcache.get(id); };
+
+    function extract(storeyId) {
+      const W = [];
+      const inStorey = (contained.get(storeyId) || []);
+      const st = storeys.find(s => s.id === storeyId);
+      // 1) 슬래브: 이 층에 속한 바닥 중 수직 압출 면적이 가장 큰 것
+      let slabs = inStorey.filter(e => kindOf(e) === 'slab');
+      const pred = id => { const a = A(id); const v = a[8]; return v && v.e ? v.e : ''; };
+      if (slabs.some(s => pred(s) !== 'ROOF' && pred(s) !== 'LANDING')) slabs = slabs.filter(s => pred(s) !== 'ROOF' && pred(s) !== 'LANDING');
+      let best = null;
+      for (const s of slabs) {
+        const g = G(s); if (!g) continue;
+        for (const e of g.ext) if (e.dirZ > 0.95) { const ar = area2(e.outer); if (!best || ar > best.ar) best = { id: s, e, g, ar }; }
+        if (!g.ext.some(e => e.dirZ > 0.95)) { const ar = (g.max[0] - g.min[0]) * (g.max[1] - g.min[1]); if (!best || (best.brep && ar > best.ar)) best = best && !best.brep ? best : { id: s, e: null, g, ar, brep: true }; }
+      }
+      if (!best) throw new Error(`'${st.name}' 층에 슬래브(바닥)가 없습니다. 다른 층을 고르세요.`);
+      if (slabs.length > 1) W.push(`이 층에 슬래브가 ${slabs.length}개 있어 가장 큰 것만 사용했습니다.`);
+      const sg = best.g;
+      let poly, t, zTop = sg.max[2], zBot = sg.min[2], openings = [];
+      if (best.e) {
+        poly = best.e.outer.map(p => [p[0], p[1]]);
+        t = best.e.len;
+        for (const q of best.e.inner) { const xs = q.map(p => p[0]), ys = q.map(p => p[1]); openings.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]); }
+      } else {
+        poly = [[sg.min[0], sg.min[1]], [sg.max[0], sg.min[1]], [sg.max[0], sg.max[1]], [sg.min[0], sg.max[1]]];
+        t = zTop - zBot; W.push('슬래브 형상이 면(Brep)으로만 되어 있어 외곽을 사각형으로 근사했습니다.');
+      }
+      // 중복점 정리
+      poly = poly.filter((p, i) => { const q = poly[(i + poly.length - 1) % poly.length]; return Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-4; });
+      for (const op of voids.get(best.id) || []) { const g = G(op); if (g) openings.push([g.min[0], g.min[1], g.max[0], g.max[1]]); }
+      const bx = [Math.min(...poly.map(p => p[0])) - 1, Math.min(...poly.map(p => p[1])) - 1, Math.max(...poly.map(p => p[0])) + 1, Math.max(...poly.map(p => p[1])) + 1];
+      const inBox = g => g.max[0] > bx[0] && g.min[0] < bx[2] && g.max[1] > bx[1] && g.min[1] < bx[3];
+      let slabVol = best.e ? best.e.vol : (sg.max[0] - sg.min[0]) * (sg.max[1] - sg.min[1]) * t;
+
+      // 2) 기둥: 슬래브 높이에 걸치는 기둥 (아래층 기둥 상단 / 위층 기둥 하단)
+      const columns = [];
+      for (const c of allOf('column')) {
+        const g = G(c); if (!g || !inBox(g)) continue;
+        if (g.max[2] < zBot - 0.05 || g.min[2] > zTop + 0.05) continue;
+        const cx = (g.min[0] + g.max[0]) / 2, cy = (g.min[1] + g.max[1]) / 2;
+        if (!columns.some(q => Math.hypot(q[0] - cx, q[1] - cy) < 0.15)) columns.push([cx, cy, Math.max(g.max[0] - g.min[0], g.max[1] - g.min[1])]);
+      }
+      // 3) 보: 윗면이 슬래브 높이 근처인 수평 보
+      const beams = []; let diag = 0, beamVol = 0;
+      for (const b of allOf('beam')) {
+        const g = G(b); if (!g || !inBox(g)) continue;
+        if (g.max[2] < zBot - 0.3 || g.max[2] > zTop + 0.3) continue;
+        const dx = g.max[0] - g.min[0], dy = g.max[1] - g.min[1], dz = g.max[2] - g.min[2];
+        if (Math.min(dx, dy) > 1.5) { diag++; continue; }
+        const below = Math.max(0, (zTop - g.min[2]) - t);
+        if (dx >= dy) { beams.push({ o: 'h', c: (g.min[1] + g.max[1]) / 2, a: g.min[0], b: g.max[0], w: dy }); beamVol += dy * dx * Math.min(below, dz); }
+        else { beams.push({ o: 'v', c: (g.min[0] + g.max[0]) / 2, a: g.min[1], b: g.max[1], w: dx }); beamVol += dx * dy * Math.min(below, dz); }
+      }
+      if (diag) W.push(`사선·곡선 보 ${diag}개는 제외했습니다.`);
+      // 보 끝을 기둥 중심·받는 보 중심선까지 늘림 (Revit은 보를 기둥 면에서 자름)
+      const reach = 0.9;
+      for (const b of beams) {
+        const colC = columns.map(c => b.o === 'h' ? [c[0], c[1]] : [c[1], c[0]]); // [along, perp]
+        for (const c of colC) if (Math.abs(c[1] - b.c) < 0.35) b.c = c[1];
+      }
+      for (const b of beams) {
+        const colC = columns.map(c => b.o === 'h' ? [c[0], c[1]] : [c[1], c[0]]);
+        for (const end of ['a', 'b']) {
+          let snapped = false;
+          for (const c of colC) if (Math.abs(c[1] - b.c) < 0.35 && Math.abs(c[0] - b[end]) < reach) { b[end] = c[0]; snapped = true; break; }
+          if (snapped) continue;
+          let bestD = reach, to = null;
+          for (const q of beams) {
+            if (q === b || q.o === b.o) continue;
+            if (b.c < q.a - 0.3 || b.c > q.b + 0.3) continue;
+            const d = Math.abs(q.c - b[end]); if (d < bestD) { bestD = d; to = q.c; }
+          }
+          if (to !== null) b[end] = to;
+        }
+      }
+      // 4) 벽: 슬래브 높이에 걸치는 직선 벽 → 사각형
+      const walls = []; let skipW = 0;
+      for (const w of allOf('wall')) {
+        const g = G(w); if (!g || !inBox(g)) continue;
+        if (g.max[2] < zBot - 0.05 || g.min[2] > zTop + 0.05) continue;
+        const dx = g.max[0] - g.min[0], dy = g.max[1] - g.min[1];
+        if (Math.min(dx, dy) > 1.0) { skipW++; continue; }
+        walls.push([g.min[0], g.min[1], g.max[0], g.max[1]]);
+      }
+      if (skipW) W.push(`사선·곡선 벽 ${skipW}개는 제외했습니다.`);
+      // 좌표를 슬래브 좌하단 기준으로 옮기고 mm 단위로 반올림
+      const ox = Math.min(...poly.map(p => p[0])), oy = Math.min(...poly.map(p => p[1]));
+      const r3 = v => Math.round(v * 1000) / 1000;
+      const mvx = v => r3(v - ox), mvy = v => r3(v - oy);
+      return {
+        project: projName, floor: st.name,
+        slab: poly.map(p => [mvx(p[0]), mvy(p[1])]), t: r3(t), C: Math.round((slabVol + beamVol) * 10) / 10,
+        columns: columns.map(c => [mvx(c[0]), mvy(c[1])]),
+        beams: beams.map(b => b.o === 'h' ? [mvx(b.a), mvy(b.c), mvx(b.b), mvy(b.c), r3(b.w)] : [mvx(b.c), mvy(b.a), mvx(b.c), mvy(b.b), r3(b.w)]),
+        walls: walls.map(w => [mvx(w[0]), mvy(w[1]), mvx(w[2]), mvy(w[3])]),
+        openings: openings.map(o => [mvx(o[0]), mvy(o[1]), mvx(o[2]), mvy(o[3])]),
+        info: { slabVol, beamVol, origin: [ox, oy], zTop, zBot }, W
+      };
+    }
+    return { storeys, extract, lenScale, projName, count: ents.size, geomOf: G, list, T };
+  }
+  return { parse };
+})();
+// ===== IFC-END =====
+// ===== 화면 =====
+const $ = s => document.querySelector(s);
+const ZC = ['#F4C58A','#B9DDB0','#F2B3C6','#A6C8EE','#D5C0EE','#EFDF92','#B3E0DA','#F2B596','#C8D3A0','#C4C4E8','#E9C9A8','#A9D6C0'];
+const zColor = k => ZC[k % ZC.length];
+const f1 = v => (Math.round(v * 10) / 10).toFixed(1);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const EXAMPLE = (() => {
+  const cols = [];
+  for (const x of [0, 8, 16]) for (const y of [0, 7, 14, 21]) cols.push([x, y]);
+  for (const y of [0, 7, 14]) cols.push([24, y]);
+  return {
+    project: '예제 — 보 구조 업무시설', floor: '6F',
+    slab: [[0, -1.5], [16, -1.5], [16, 0], [24, 0], [24, 14], [16, 14], [16, 21], [0, 21]],
+    t: 0.2, C: 125, columns: cols,
+    beams: [[4, 0, 4, 7, 0.4], [4, 7, 4, 14, 0.4], [4, 14, 4, 21, 0.4], [12, 0, 12, 7, 0.4], [12, 7, 12, 14, 0.4], [12, 14, 12, 21, 0.4], [20, 0, 20, 7, 0.4], [20, 7, 20, 14, 0.4]],
+    walls: [[8, 14, 12, 14.25], [8, 18.25, 12, 18.5], [8, 14, 8.25, 18.5], [11.75, 14, 12, 18.5]],
+    openings: [[8.25, 14.25, 11.75, 18.25], [12.3, 15, 15.3, 18.25]],
+    P: 35, N: 5, ratio: '1/3', mult: 2, defW: 0.4, cantExt: false
+  };
+})();
+
+const rowsText = rows => (rows || []).map(r => r.join(', ')).join('\n');
+function fill(o) {
+  const set = (id, v) => { if (v !== undefined && v !== null) $('#' + id).value = v; };
+  set('project', o.project); set('floor', o.floor);
+  $('#slab').value = rowsText(o.slab); $('#columns').value = rowsText(o.columns);
+  $('#beams').value = rowsText(o.beams); $('#walls').value = rowsText(o.walls); $('#openings').value = rowsText(o.openings);
+  set('t', o.t); $('#C').value = o.C > 0 ? o.C : ''; set('P', o.P); if (o.N !== undefined) $('#N').value = o.N > 0 ? o.N : '';
+  if (o.ratio !== undefined) $('#ratio').value = o.ratio; set('mult', o.mult); set('defW', o.defW); set('minCut', o.minCut); set('cantMin', o.cantMin);
+  if (o.cantExt !== undefined) $('#cantExt').checked = !!o.cantExt;
+}
+function parseRows(text, n, label, errs) {
+  const rows = [], bad = [];
+  text.split(/\n/).forEach((line, i) => {
+    const s = line.replace(/#.*/, '').replace(/[()\[\]]/g, ' ').trim(); if (!s) return;
+    const v = s.split(/[\s,;\t]+/).filter(Boolean).map(Number);
+    if (v.length < n || v.slice(0, n).some(x => !isFinite(x))) bad.push(i + 1); else rows.push(v);
+  });
+  if (bad.length) errs.push(`${label}: ${bad.join(', ')}번째 줄을 읽지 못했습니다. 숫자를 쉼표로 구분해 입력하세요.`);
+  return rows;
+}
+function parseRatio(s) { s = String(s).trim(); if (s.includes('/')) { const [a, b] = s.split('/').map(Number); return a / b; } return Number(s); }
+const num = id => { const v = $('#' + id).value.trim(); return v === '' ? NaN : Number(v); };
+
+function readInputs() {
+  const errs = [];
+  const inp = {
+    project: $('#project').value.trim(), floor: $('#floor').value.trim(),
+    slab: parseRows($('#slab').value, 2, '슬래브 외곽선', errs),
+    columns: parseRows($('#columns').value, 2, '기둥', errs),
+    beams: parseRows($('#beams').value, 4, '보', errs),
+    walls: parseRows($('#walls').value, 4, '벽', errs).map(normRect),
+    openings: parseRows($('#openings').value, 4, '개구부', errs).map(normRect),
+    t: num('t'), C: num('C'), P: num('P'), N: num('N'),
+    ratio: parseRatio($('#ratio').value), mult: num('mult'), defW: num('defW'), minCut: num('minCut'), cantMin: num('cantMin'),
+    restarts: Math.max(10, Math.min(500, num('restarts') || 120)), cantExt: $('#cantExt').checked
+  };
+  if (!(inp.P > 0)) errs.push('1일 최대 타설량 P를 0보다 큰 값으로 입력하세요.');
+  if (!(inp.C > 0) && !(inp.t > 0)) errs.push('슬래브 두께 t 또는 총 타설량 C 중 하나는 입력해야 합니다.');
+  if (!(inp.ratio > 0 && inp.ratio <= 1)) errs.push('가운데 구간 비율은 0보다 크고 1 이하여야 합니다 (예: 1/3).');
+  if (!(inp.mult >= 0)) errs.push('작은보 이격 배수는 0 이상이어야 합니다.');
+  if (!(inp.defW > 0)) errs.push('기본 작은보 폭을 입력하세요.');
+  if (!(inp.minCut >= 0)) inp.minCut = 0.3;
+  if (!(inp.cantMin >= 0)) inp.cantMin = 0.3;
+  if (!(inp.t > 0)) inp.t = 0;
+  return { inp, errs };
+}
+
+const state = { M: null, R: null, sel: 0, inp: null, N: 0, fail: false };
+
+function showMsgs(list) {
+  $('#msgs').innerHTML = list.map(([k, t]) => `<div class="msg ${k}"><p>${t}</p></div>`).join('');
+}
+
+function run() {
+  const btn = $('#run'); btn.disabled = true; btn.textContent = '계산 중…';
+  setTimeout(() => {
+    try { compute(); } catch (e) { $('#empty').hidden = true; $('#out').hidden = false; showMsgs([['err', '계산 중 오류: ' + esc(e.message)]]); console.error(e); }
+    btn.disabled = false; btn.textContent = '구획 나누기';
+  }, 30);
+}
+
+function compute() {
+  const { inp, errs } = readInputs();
+  $('#empty').hidden = true; $('#out').hidden = false;
+  if (errs.length) { showMsgs(errs.map(e => ['err', esc(e)])); $('#sheet').hidden = true; $('#zoneBlock').hidden = $('#altBlock').hidden = true; return; }
+  const M = analyze(inp);
+  if (M.E.length) { showMsgs(M.E.map(e => ['err', esc(e)])); $('#sheet').hidden = true; $('#zoneBlock').hidden = $('#altBlock').hidden = true; return; }
+  state.M = M; state.inp = inp; state.R = null; state.sel = 0; state.fail = false;
+  const msgs = M.W.map(w => ['warn', esc(w)]);
+  const N = isFinite(inp.N) && inp.N > 0 ? Math.round(inp.N) : M.Nmin; state.N = N;
+  $('#nHint').textContent = `이 층의 하한: 올림(${f1(M.C)} ÷ ${inp.P}) = ${M.Nmin}구역`;
+  const big = M.units[M.maxUnit];
+  if (big.vol > inp.P + 1e-6) {
+    state.fail = true;
+    msgs.unshift(['err', `반드시 한 번에 쳐야 하는 영역(최소 타설 단위) 중 가장 큰 것이 ${f1(big.vol)} ㎥로, 하루 최대 타설량 ${inp.P} ㎥를 넘습니다. 구역을 몇 개로 나누든 계획이 나오지 않습니다. 빨간 빗금 영역의 벽·개구부 배치나 P를 확인하세요.`]);
+  } else if (N < M.Nmin) {
+    state.fail = true;
+    msgs.unshift(['err', `구역 수 N=${N}은 하한 ${M.Nmin}보다 작습니다. 총 ${f1(M.C)} ㎥를 하루 ${inp.P} ㎥로 치려면 최소 ${M.Nmin}구역이 필요합니다.`]);
+  } else if (N > M.units.length) {
+    state.fail = true;
+    msgs.unshift(['err', `나눌 수 있는 최소 타설 단위가 ${M.units.length}개뿐이라 ${N}구역을 만들 수 없습니다. N을 ${M.units.length} 이하로 줄이세요.`]);
+  } else if (M.comps.length > N) {
+    state.fail = true;
+    msgs.unshift(['err', `벽·개구부로 완전히 떨어진 덩어리가 ${M.comps.length}개라 최소 ${M.comps.length}구역이 필요합니다.`]);
+  } else {
+    const R = recommend(M, N, inp.P, inp.restarts, 10);
+    state.Rinfo = R;
+    if (!R.sols.length) {
+      state.fail = true;
+      const why = [];
+      if (R.overP) why.push(`${R.overP}개는 어떤 구역이 하루 한도 ${inp.P} ㎥를 넘었고`);
+      if (R.bentN) why.push(`${R.bentN}개는 한도는 지켰지만 경계가 보·기둥 위가 아닌 곳에서 꺾여(규칙 3) 제외됐습니다`);
+      msgs.unshift(['err', `${N}구역으로 규칙 1~6을 모두 지키는 배정을 찾지 못했습니다. 시도한 ${R.tried}개 배정 중 ${why.join(', ')}. 구역 수를 늘리면 선택지가 넓어집니다. <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
+    } else {
+      state.R = R;
+      const s = R.sols[0];
+      msgs.unshift(['ok', `${N}구역(${N}일)으로 규칙 1~6을 모두 지키는 타설 방법 후보 ${R.sols.length}개를 찾았습니다. 추천 1번: 가장 큰 구역 ${f1(s.maxVol)} ㎥ / 하루 한도 ${inp.P} ㎥, 최대 편차 ${(s.maxDev * 100).toFixed(1)}%.`]);
+      if (R.sols.length < 10) msgs.push(['warn', `${N}구역으로 규칙을 모두 지키면서 서로 다른 배정은 ${R.sols.length}개입니다. 더 많은 선택지를 보려면 구역 수를 늘려 보세요. <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
+    }
+  }
+  if (!M.Cgiven) msgs.push(['warn', `총 타설량 C를 비워 슬래브 면적 × 두께(${f1(M.totalArea)} ㎡ × ${inp.t} m = ${f1(M.C)} ㎥)로 계산했습니다. 보 물량은 빠져 있습니다.`]);
+  showMsgs(msgs);
+  $('#sheet').hidden = false;
+  if (state.fail) { document.querySelector('[data-layer=units]').checked = true; document.querySelector('[data-layer=cand]').checked = true; }
+  renderAll(true);
+  if (window.matchMedia('(max-width:920px)').matches) $('#result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function layerOn(n) { return document.querySelector(`[data-layer=${n}]`).checked; }
+
+function renderAll(fresh) {
+  const M = state.M; if (!M) return;
+  const sol = state.R ? state.R.sols[state.sel] : null;
+  $('#drawing').innerHTML = drawSVG(M, sol);
+  const sh = $('#sheet'); if (fresh) { sh.classList.remove('fresh'); void sh.offsetWidth; sh.classList.add('fresh'); }
+  $('#legend').innerHTML = [
+    ['var(--girder)', '큰보'], ['var(--beam)', '작은보'], ['var(--wall)', '벽·코어'],
+    layerOn('cand') ? ['var(--ok)', '절단 가능'] : null, layerOn('cand') ? ['var(--ng)', '절단 불가'] : null,
+    sol ? ['var(--ink)', '타설 이음(구역 경계)'] : null
+  ].filter(Boolean).map(([c, t]) => `<span><i style="border-color:${c}"></i>${t}</span>`).join('');
+  const inp = state.inp;
+  $('#tbTitle').textContent = `${inp.floor || '기준층'} 타설구획도`;
+  $('#tbSub').textContent = `${inp.project || '프로젝트 미입력'} · ${new Date().toLocaleDateString('ko-KR')}`;
+  const facts = [
+    ['총 타설량 C', `${f1(M.C)} ㎥`], ['1일 한도 P', `${inp.P} ㎥`],
+    ['구역 수', sol ? `${sol.N} (하한 ${M.Nmin})` : `하한 ${M.Nmin}`], ['최소 타설 단위', `${M.units.length}개`],
+    ['절단 후보 가능/불가', `${M.stats.okN} / ${M.stats.ngN}`], ['총 이음 길이', sol ? `${f1(sol.total)} m` : '—']
+  ];
+  $('#tbFacts').innerHTML = facts.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('');
+  $('#zoneBlock').hidden = !sol; $('#altBlock').hidden = !sol;
+  if (sol) {
+    $('#zoneTable').innerHTML = `<thead><tr><th>구역</th><th>타설량 (㎥)</th><th>면적 (㎡)</th><th>한도 대비</th><th>구역 둘레 이음 (m)</th></tr></thead><tbody>` +
+      sol.vol.map((v, k) => `<tr><td><span class="sw" style="background:${zColor(k)}"></span>C${k + 1}</td><td>${f1(v)}</td><td>${f1(sol.area[k])}</td><td class="${v > inp.P ? 'over' : ''}">${(v / inp.P * 100).toFixed(0)}%</td><td>${f1(sol.joint[k])}</td></tr>`).join('') +
+      `<tr><td><b>합계</b></td><td><b>${f1(sol.vol.reduce((a, b) => a + b, 0))}</b></td><td>${f1(M.totalArea)}</td><td></td><td>${f1(sol.total)} <small>(중복 제외)</small></td></tr></tbody>`;
+    $('#candCount').textContent = `${state.R.sols.length}개`;
+    $('#cands').innerHTML = state.R.sols.map((s, i) => `<button type="button" class="cand" data-i="${i}" aria-pressed="${i === state.sel}">
+        <span class="ct">후보 ${i + 1}${i === 0 ? ' <small>추천</small>' : ''}<small>${s.N}구역</small></span>
+        ${drawMini(M, s)}
+        <span class="cm">최대 ${f1(s.maxVol)} ㎥ · 편차 ${(s.maxDev * 100).toFixed(0)}%<br>최소 ${f1(s.minVol)} ㎥ · 이음 ${f1(s.total)} m</span>
+        <span class="tags">${(s.tags || []).map(t => `<span class="${t.startsWith('타설') ? 'day' : ''}">${t}</span>`).join('')}</span>
+      </button>`).join('');
+    $('#altTable').innerHTML = `<thead><tr><th>후보</th><th>구역(일)</th><th>최대 편차</th><th>최대 구역 (㎥)</th><th>최소 구역 (㎥)</th><th>총 이음 (m)</th></tr></thead><tbody>` +
+      state.R.sols.map((s, i) => `<tr data-i="${i}" class="${i === state.sel ? 'sel' : ''}" tabindex="0"><td>${i + 1}${i === 0 ? ' 추천' : ''}</td><td>${s.N}</td><td>${(s.maxDev * 100).toFixed(1)}%</td><td>${f1(s.maxVol)}</td><td>${f1(s.minVol)}</td><td>${f1(s.total)}</td></tr>`).join('') + '</tbody>';
+    $('#detailTitle').textContent = `후보 ${state.sel + 1} 상세${state.sel === 0 ? ' (추천)' : ''}`;
+  }
+  $('#detailTitle').hidden = !sol;
+  renderBasis(M);
+  $('#exportText').value = csvText();
+}
+
+function drawSVG(M, sol) {
+  const P = M.poly, xs0 = Math.min(...P.map(p => p[0])), xs1 = Math.max(...P.map(p => p[0])), ys0 = Math.min(...P.map(p => p[1])), ys1 = Math.max(...P.map(p => p[1]));
+  const span = Math.max(xs1 - xs0, ys1 - ys0), pad = span * 0.09 + 1.2, fs = Math.max(0.35, span / 42);
+  const vb = [xs0 - pad, -(ys1 + pad), xs1 - xs0 + 2 * pad, ys1 - ys0 + 2 * pad];
+  const Y = y => -y, o = [];
+  const nsw = 'vector-effect="non-scaling-stroke"';
+  o.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb.map(v => v.toFixed(3)).join(' ')}" role="img" aria-label="타설 구획 평면도" font-family="IBM Plex Sans KR, Malgun Gothic, sans-serif">`);
+  o.push(`<defs><pattern id="hatch" width="${fs}" height="${fs}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="${fs}" height="${fs}" fill="#F6D2CF"/><line x1="0" y1="0" x2="0" y2="${fs}" stroke="#C8423B" stroke-width="${fs * 0.25}"/></pattern></defs>`);
+  // 그리드 축
+  const ax = M.xs.map((x, i) => [x, 'X' + (i + 1)]), ay = M.ys.map((y, i) => [y, 'Y' + (i + 1)]);
+  for (const [x, t] of ax) {
+    o.push(`<line x1="${x}" y1="${Y(ys1 + pad * 0.55)}" x2="${x}" y2="${Y(ys0 - pad * 0.3)}" stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="6 3 1 3" ${nsw} opacity=".55"/>`);
+    o.push(`<circle cx="${x}" cy="${Y(ys1 + pad * 0.72)}" r="${fs * 0.95}" fill="var(--sheet)" stroke="var(--ink)" stroke-width="1" ${nsw}/><text x="${x}" y="${Y(ys1 + pad * 0.72)}" font-size="${fs}" text-anchor="middle" dominant-baseline="central" fill="var(--ink)">${t}</text>`);
+  }
+  for (const [y, t] of ay) {
+    o.push(`<line x1="${xs0 - pad * 0.55}" y1="${Y(y)}" x2="${xs1 + pad * 0.3}" y2="${Y(y)}" stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="6 3 1 3" ${nsw} opacity=".55"/>`);
+    o.push(`<circle cx="${xs0 - pad * 0.72}" cy="${Y(y)}" r="${fs * 0.95}" fill="var(--sheet)" stroke="var(--ink)" stroke-width="1" ${nsw}/><text x="${xs0 - pad * 0.72}" y="${Y(y)}" font-size="${fs}" text-anchor="middle" dominant-baseline="central" fill="var(--ink)">${t}</text>`);
+  }
+  // 셀 채우기 (가로 방향으로 같은 색 묶음)
+  const { X, Y: YY, nx, ny, active, unitOf, units } = M;
+  const bigBad = new Set(); units.forEach((u, i) => { if (u.vol > M.P + 1e-6) bigBad.add(i); });
+  const colorOf = k => {
+    const u = unitOf[k];
+    if (bigBad.has(u) && (!sol || !layerOn('zones'))) return 'url(#hatch)';
+    if (sol && layerOn('zones')) return zColor(sol.z[u]);
+    return 'var(--cell)';
+  };
+  for (let j = 0; j < ny; j++) {
+    let i = 0;
+    while (i < nx) {
+      const k = j * nx + i; if (!active[k]) { i++; continue; }
+      const c = colorOf(k); let e = i + 1;
+      while (e < nx && active[j * nx + e] && colorOf(j * nx + e) === c) e++;
+      o.push(`<rect x="${X[i]}" y="${Y(YY[j + 1])}" width="${X[e] - X[i]}" height="${YY[j + 1] - YY[j]}" fill="${c}" stroke="${c.startsWith('url') ? 'none' : c}" stroke-width="0.6" ${nsw}/>`);
+      i = e;
+    }
+  }
+  // 개구부·벽
+  for (const r of M.openings) o.push(`<rect x="${r[0]}" y="${Y(r[3])}" width="${r[2] - r[0]}" height="${r[3] - r[1]}" fill="var(--sheet)" stroke="var(--ink)" stroke-width="1" ${nsw}/><path d="M${r[0]} ${Y(r[1])}L${r[2]} ${Y(r[3])}M${r[0]} ${Y(r[3])}L${r[2]} ${Y(r[1])}" stroke="var(--muted)" stroke-width="0.7" ${nsw}/>`);
+  for (const r of M.walls) o.push(`<rect x="${r[0]}" y="${Y(r[3])}" width="${r[2] - r[0]}" height="${r[3] - r[1]}" fill="var(--wall)" stroke="var(--wall)" stroke-width="1" ${nsw}/>`);
+  // 슬래브 외곽
+  o.push(`<polygon points="${P.map(p => p[0] + ',' + Y(p[1])).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="1.6" ${nsw}/>`);
+  // 최소 타설 단위 경계
+  if (layerOn('units')) for (const e of M.edges) if (e.A >= 0 && unitOf[e.A] !== unitOf[e.B])
+    o.push(`<line x1="${e.x1}" y1="${Y(e.y1)}" x2="${e.x2}" y2="${Y(e.y2)}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 2" ${nsw}/>`);
+  // 보·기둥
+  if (layerOn('struct')) {
+    for (const b of M.beams) {
+      const w = b.kind === 'G' ? 4 : 2.6, col = b.kind === 'G' ? 'var(--girder)' : 'var(--beam)';
+      const [x1, y1, x2, y2] = b.o === 'h' ? [b.a, b.c, b.b, b.c] : [b.c, b.a, b.c, b.b];
+      o.push(`<line x1="${x1}" y1="${Y(y1)}" x2="${x2}" y2="${Y(y2)}" stroke="${col}" stroke-width="${w}" ${nsw} opacity=".9"/>`);
+    }
+    const cw = Math.max(0.45, span / 60);
+    for (const c of M.cs) o.push(`<rect x="${c[0] - cw / 2}" y="${Y(c[1]) - cw / 2}" width="${cw}" height="${cw}" fill="var(--col)"/>`);
+  }
+  // 절단 후보
+  if (layerOn('cand')) for (const e of M.edges) if (e.cand)
+    o.push(`<line x1="${e.x1}" y1="${Y(e.y1)}" x2="${e.x2}" y2="${Y(e.y2)}" stroke="${e.ok ? 'var(--ok)' : 'var(--ng)'}" stroke-width="${e.ok ? 2.2 : 1.4}" ${e.ok ? '' : 'stroke-dasharray="4 3"'} ${nsw}><title>${e.ok ? '절단 가능 — ' + SRC.ok : ({ mid: '가운데 구간 밖 — ' + SRC.mid, jn: '작은보 접합부 이격 부족 — ' + SRC.jn, cant: '캔틸레버 — ' + SRC.cant, wall: '벽·개구부 관통 — ' + SRC.wall }[e.why] || '절단 불가')}</title></line>`);
+  // 타설 이음 (구역 경계)
+  if (sol) {
+    for (const e of M.edges) if (e.A >= 0 && sol.z[unitOf[e.A]] !== sol.z[unitOf[e.B]])
+      o.push(`<line x1="${e.x1}" y1="${Y(e.y1)}" x2="${e.x2}" y2="${Y(e.y2)}" stroke="var(--ink)" stroke-width="3.2" stroke-linecap="square" ${nsw}/>`);
+    for (const [x, y] of sol.bends) o.push(`<circle cx="${x}" cy="${Y(y)}" r="${fs * 0.7}" fill="none" stroke="var(--ng)" stroke-width="2" ${nsw}><title>보 위가 아닌 꺾임</title></circle>`);
+    // 라벨
+    const N = sol.vol.length;
+    for (let k = 0; k < N; k++) {
+      let ax2 = 0, ay2 = 0, ar = 0; const cells = [];
+      units.forEach((u, i) => { if (sol.z[i] === k) { ax2 += u.cx * u.area; ay2 += u.cy * u.area; ar += u.area; cells.push(...u.cells); } });
+      const gx = ax2 / ar, gy = ay2 / ar; let best = null, bd = Infinity;
+      for (const c of cells) { const i = c % nx, j = Math.floor(c / nx), cx = (X[i] + X[i + 1]) / 2, cy = (YY[j] + YY[j + 1]) / 2, a = (X[i + 1] - X[i]) * (YY[j + 1] - YY[j]); const d = Math.hypot(cx - gx, cy - gy) - Math.sqrt(a) * 0.6; if (d < bd) { bd = d; best = [cx, cy]; } }
+      if (!best) continue;
+      const halo = `paint-order="stroke" stroke="#FFFFFF" stroke-width="${fs * 0.28}" stroke-linejoin="round"`;
+      o.push(`<text x="${best[0]}" y="${Y(best[1]) - fs * 0.15}" font-size="${fs * 1.6}" font-weight="700" text-anchor="middle" fill="#1D2A30" ${halo}>C${k + 1}</text>`);
+      o.push(`<text x="${best[0]}" y="${Y(best[1]) + fs * 1.25}" font-size="${fs * 0.95}" text-anchor="middle" fill="#1D2A30" ${halo}>${f1(sol.vol[k])} ㎥</text>`);
+    }
+  }
+  o.push('</svg>');
+  return o.join('');
+}
+
+// 판정 근거 (규칙 문서의 기준표 그대로)
+const SRC = {
+  ok: 'KCS 14 20 10 3.6.5(1) — 가운데 구간 수치는 ACI 318-14 26.5.6.2(b) 참조',
+  mid: 'KCS 14 20 10 3.6.5(1), 3.6.1(1) — 가운데 1/3 수치는 ACI 318-14 26.5.6.2(b) 참조',
+  jn: 'KCS 14 20 10 3.6.5(1) 단서',
+  wall: '물리적 제약',
+  cant: 'KCS 14 20 10 3.6.4(1)',
+  bend: '시공성 (스톱엔드 지지)',
+  line: 'KCS 14 20 10 3.6.2(1), 3.7.1(3) + 시공성',
+  conn: 'KCS 14 20 10 3.7.1(2) — 인접 그래프 씨앗 확장으로 강제'
+};
+function basisRows(M) {
+  const w = M.stats.why, R = state.Rinfo;
+  return [
+    ['절단 가능 (규칙 1·2 충족)', M.stats.okN, SRC.ok],
+    ['불가: 가운데 구간 밖 (규칙 1)', w.mid, SRC.mid],
+    ['불가: 작은보 접합부 이격 부족 (규칙 2)', w.jn, SRC.jn],
+    ['불가: 벽·개구부 관통 (규칙 3)', w.wall, SRC.wall],
+    ['불가: 캔틸레버 (규칙 4)', w.cant, SRC.cant],
+    ['제외된 배정: 보 위가 아닌 꺾임 (규칙 3)', R ? R.bentN : 0, SRC.bend],
+    ['절단선: 그리드와 나란한 직선만 (규칙 5)', '전체 적용', SRC.line],
+    ['구역: 하나로 연결 (규칙 6)', '전체 적용', SRC.conn]
+  ];
+}
+function renderBasis(M) {
+  $('#basis').innerHTML = `<table><thead><tr><th>판정</th><th>개수</th><th>근거</th></tr></thead><tbody>` +
+    basisRows(M).map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td class="src">${r[2]}</td></tr>`).join('') + '</tbody></table>';
+}
+
+function drawMini(M, sol) {
+  const P = M.poly, x0 = Math.min(...P.map(p => p[0])), x1 = Math.max(...P.map(p => p[0])), y0 = Math.min(...P.map(p => p[1])), y1 = Math.max(...P.map(p => p[1]));
+  const w = x1 - x0, h = y1 - y0, pad = Math.max(w, h) * 0.04;
+  // 4:3 틀 안에 가운데 정렬
+  let vw = w + 2 * pad, vh = h + 2 * pad; if (vw / vh > 4 / 3) vh = vw * 3 / 4; else vw = vh * 4 / 3;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const o = [`<svg viewBox="${cx - vw / 2} ${-(cy + vh / 2)} ${vw} ${vh}" aria-hidden="true">`];
+  const { X, Y, nx, ny, active, unitOf } = M, nsw = 'vector-effect="non-scaling-stroke"';
+  for (let j = 0; j < ny; j++) {
+    let i = 0;
+    while (i < nx) {
+      const k = j * nx + i; if (!active[k]) { i++; continue; }
+      const zk = sol.z[unitOf[k]]; let e = i + 1;
+      while (e < nx && active[j * nx + e] && sol.z[unitOf[j * nx + e]] === zk) e++;
+      const c = zColor(zk);
+      o.push(`<rect x="${X[i]}" y="${-Y[j + 1]}" width="${X[e] - X[i]}" height="${Y[j + 1] - Y[j]}" fill="${c}" stroke="${c}" stroke-width="0.5" ${nsw}/>`);
+      i = e;
+    }
+  }
+  for (const r of M.walls) o.push(`<rect x="${r[0]}" y="${-r[3]}" width="${r[2] - r[0]}" height="${r[3] - r[1]}" fill="var(--wall)"/>`);
+  let d = '';
+  for (const e of M.edges) if (e.A >= 0 && sol.z[unitOf[e.A]] !== sol.z[unitOf[e.B]]) d += `M${e.x1} ${-e.y1}L${e.x2} ${-e.y2}`;
+  o.push(`<path d="${d}" stroke="#1D2A30" stroke-width="1.8" fill="none" stroke-linecap="square" ${nsw}/>`);
+  o.push(`<polygon points="${P.map(p => p[0] + ',' + (-p[1])).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="1" ${nsw}/></svg>`);
+  return o.join('');
+}
+
+function csvText() {
+  const sol = state.R ? state.R.sols[state.sel] : null; if (!sol) return '';
+  const lines = ['구역,타설량(m3),면적(m2),한도대비(%),구역둘레이음(m)'];
+  sol.vol.forEach((v, k) => lines.push(`C${k + 1},${f1(v)},${f1(sol.area[k])},${(v / state.inp.P * 100).toFixed(0)},${f1(sol.joint[k])}`));
+  lines.push(`합계,${f1(sol.vol.reduce((a, b) => a + b, 0))},${f1(state.M.totalArea)},,${f1(sol.total)}`);
+  lines.unshift(`선택 후보,${state.sel + 1}`);
+  lines.push('', '후보,구역수(일),최대편차(%),최대구역(m3),최소구역(m3),총이음(m),특징');
+  state.R.sols.forEach((s, i) => lines.push(`${i + 1},${s.N},${(s.maxDev * 100).toFixed(1)},${f1(s.maxVol)},${f1(s.minVol)},${f1(s.total)},${(s.tags || []).join(' / ')}`));
+  lines.push('', '판정,개수,근거');
+  basisRows(state.M).forEach(r => lines.push(`${r[0]},${r[1]},"${r[2]}"`));
+  return lines.join('\n');
+}
+function inputJSON() {
+  const { inp } = readInputs();
+  const o = { project: inp.project, floor: inp.floor, slab: inp.slab, t: inp.t, C: isFinite(inp.C) ? inp.C : null, columns: inp.columns, beams: inp.beams, walls: inp.walls, openings: inp.openings, P: inp.P, N: isFinite(inp.N) ? inp.N : null, ratio: $('#ratio').value, mult: inp.mult, defW: inp.defW, minCut: inp.minCut, cantMin: inp.cantMin, cantExt: inp.cantExt };
+  return JSON.stringify(o, null, 1);
+}
+function download(name, text, type) {
+  try {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) { /* 저장이 막힌 환경 */ }
+  $('#exportText').value = text; $('#exportText').select();
+}
+
+$('#run').addEventListener('click', run);
+$('#msgs').addEventListener('click', e => { const b = e.target.closest('.inline-btn'); if (!b) return; $('#N').value = b.dataset.n; run(); });
+$('#example').addEventListener('click', () => { fill(EXAMPLE); run(); });
+document.querySelectorAll('[data-layer]').forEach(c => c.addEventListener('change', () => renderAll(false)));
+$('#cands').addEventListener('click', e => {
+  const b = e.target.closest('.cand'); if (!b) return;
+  state.sel = +b.dataset.i; renderAll(false);
+  if (window.matchMedia('(max-width:920px)').matches) $('#detailTitle').scrollIntoView({ behavior: 'smooth' });
+});
+$('#altTable').addEventListener('click', e => { const tr = e.target.closest('tr[data-i]'); if (!tr) return; state.sel = +tr.dataset.i; renderAll(false); });
+$('#altTable').addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const tr = e.target.closest('tr[data-i]'); if (!tr) return; e.preventDefault(); state.sel = +tr.dataset.i; renderAll(false); });
+$('#dlCsv').addEventListener('click', () => download(`타설구획_${state.inp?.floor || ''}.csv`, '\uFEFF' + csvText(), 'text/csv'));
+$('#dlSvg').addEventListener('click', () => { const svg = $('#drawing').innerHTML; download(`타설구획_${state.inp?.floor || ''}.svg`, svg, 'image/svg+xml'); });
+$('#dlJson').addEventListener('click', () => download('입력값.json', inputJSON(), 'application/json'));
+function applyJSON(text) {
+  try { const o = JSON.parse(text); fill(o); showLoaded(); }
+  catch (e) { $('#empty').hidden = true; $('#out').hidden = false; $('#sheet').hidden = true; showMsgs([['err', 'JSON을 읽지 못했습니다: ' + esc(e.message)]]); }
+}
+function showLoaded() { $('#jsonText').value = ''; $('#run').focus(); }
+$('#jsonLoad').addEventListener('click', () => applyJSON($('#jsonText').value));
+$('#jsonFile').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => applyJSON(r.result); r.readAsText(f, 'utf-8'); });
+
+// ----- IFC 업로드 -----
+const SAMPLE_IFC = "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('ViewDefinition [CoordinationView]'),'2;1');\nFILE_NAME('','2026-09-22T02:57:36',(''),(''),'IfcOpenShell 0.8.5-1c5b825','IfcOpenShell 0.8.5-1c5b825','');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;\n#1=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);\n#2=IFCUNITASSIGNMENT((#1));\n#3=IFCCARTESIANPOINT((0.,0.,0.));\n#4=IFCAXIS2PLACEMENT3D(#3,$,$);\n#5=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.0000000000000001E-05,#4,$);\n#6=IFCPROJECT('0F0L$ToczDp9QB62lkY$gv',$,'\\X2\\C608C81C\\X0\\ RC \\X2\\C5C5BB34C2DCC124\\X0\\',$,$,$,$,(#5),#2);\n#7=IFCCARTESIANPOINT((120000.,50000.,0.));\n#8=IFCDIRECTION((0.,0.,1.));\n#9=IFCDIRECTION((1.,0.,0.));\n#10=IFCAXIS2PLACEMENT3D(#7,#8,#9);\n#11=IFCLOCALPLACEMENT($,#10);\n#12=IFCSITE('0TmNFQgdn7ZveSDD4Blyhg',$,'Site',$,$,#11,$,$,.ELEMENT.,$,$,$,$,$);\n#13=IFCCARTESIANPOINT((0.,0.,0.));\n#14=IFCAXIS2PLACEMENT3D(#13,$,$);\n#15=IFCLOCALPLACEMENT(#11,#14);\n#16=IFCBUILDING('0hckDPT3L94gALoX8aQrbs',$,'B',$,$,#15,$,$,.ELEMENT.,$,$,$);\n#17=IFCRELAGGREGATES('3O5A1$T311Bgo29rahqL3k',$,$,$,#6,(#12));\n#18=IFCRELAGGREGATES('2ducZRnEH50uuOZ4iFshTA',$,$,$,#12,(#16));\n#19=IFCCARTESIANPOINT((0.,0.,0.));\n#20=IFCAXIS2PLACEMENT3D(#19,$,$);\n#21=IFCLOCALPLACEMENT(#15,#20);\n#22=IFCBUILDINGSTOREY('1jZytKfzX4ePbfwxZOEZeM',$,'1\\X2\\CE35\\X0\\',$,$,#21,$,$,.ELEMENT.,0.);\n#23=IFCCARTESIANPOINT((0.,0.,4000.));\n#24=IFCAXIS2PLACEMENT3D(#23,$,$);\n#25=IFCLOCALPLACEMENT(#15,#24);\n#26=IFCBUILDINGSTOREY('3ca4prTGz978pwK$oBlO1w',$,'2\\X2\\CE35\\X0\\',$,$,#25,$,$,.ELEMENT.,4000.);\n#27=IFCCARTESIANPOINT((0.,0.,8000.));\n#28=IFCAXIS2PLACEMENT3D(#27,$,$);\n#29=IFCLOCALPLACEMENT(#15,#28);\n#30=IFCBUILDINGSTOREY('1zMY34uj5AjwObbuXFcADe',$,'3\\X2\\CE35\\X0\\',$,$,#29,$,$,.ELEMENT.,8000.);\n#31=IFCRELAGGREGATES('0HbSXXG2bCWRzC8m7ZpD$R',$,$,$,#16,(#22,#26,#30));\n#32=IFCCARTESIANPOINT((0.,0.));\n#33=IFCAXIS2PLACEMENT2D(#32,$);\n#34=IFCRECTANGLEPROFILEDEF(.AREA.,$,#33,600.,600.);\n#35=IFCCARTESIANPOINT((0.,0.,0.));\n#36=IFCAXIS2PLACEMENT3D(#35,$,$);\n#37=IFCDIRECTION((0.,0.,1.));\n#38=IFCEXTRUDEDAREASOLID(#34,#36,#37,4000.);\n#39=IFCCARTESIANPOINT((0.,0.,0.));\n#40=IFCAXIS2PLACEMENT3D(#39,$,$);\n#41=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#38));\n#42=IFCREPRESENTATIONMAP(#40,#41);\n#43=IFCCARTESIANPOINT((0.,0.,0.));\n#44=IFCAXIS2PLACEMENT3D(#43,$,$);\n#45=IFCLOCALPLACEMENT(#21,#44);\n#46=IFCCARTESIANPOINT((0.,0.,0.));\n#47=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#46,$,$);\n#48=IFCMAPPEDITEM(#42,#47);\n#49=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#48));\n#50=IFCPRODUCTDEFINITIONSHAPE($,$,(#49));\n#51=IFCCOLUMN('21PhfbJz16JBSH3ywxigOF',$,'Concrete-Column:600x600',$,$,#45,#50,$,$);\n#52=IFCCARTESIANPOINT((0.,7000.,0.));\n#53=IFCAXIS2PLACEMENT3D(#52,$,$);\n#54=IFCLOCALPLACEMENT(#21,#53);\n#55=IFCCARTESIANPOINT((0.,0.,0.));\n#56=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#55,$,$);\n#57=IFCMAPPEDITEM(#42,#56);\n#58=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#57));\n#59=IFCPRODUCTDEFINITIONSHAPE($,$,(#58));\n#60=IFCCOLUMN('3bh91lOH58BfBRAMj7YEBc',$,'Concrete-Column:600x600',$,$,#54,#59,$,$);\n#61=IFCCARTESIANPOINT((0.,14000.,0.));\n#62=IFCAXIS2PLACEMENT3D(#61,$,$);\n#63=IFCLOCALPLACEMENT(#21,#62);\n#64=IFCCARTESIANPOINT((0.,0.,0.));\n#65=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#64,$,$);\n#66=IFCMAPPEDITEM(#42,#65);\n#67=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#66));\n#68=IFCPRODUCTDEFINITIONSHAPE($,$,(#67));\n#69=IFCCOLUMN('3vhgsyoLb6GRXWPCGjRXpB',$,'Concrete-Column:600x600',$,$,#63,#68,$,$);\n#70=IFCCARTESIANPOINT((0.,21000.,0.));\n#71=IFCAXIS2PLACEMENT3D(#70,$,$);\n#72=IFCLOCALPLACEMENT(#21,#71);\n#73=IFCCARTESIANPOINT((0.,0.,0.));\n#74=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#73,$,$);\n#75=IFCMAPPEDITEM(#42,#74);\n#76=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#75));\n#77=IFCPRODUCTDEFINITIONSHAPE($,$,(#76));\n#78=IFCCOLUMN('3q0uMv8pH9IRRZ1f4F7_N5',$,'Concrete-Column:600x600',$,$,#72,#77,$,$);\n#79=IFCCARTESIANPOINT((8000.,0.,0.));\n#80=IFCAXIS2PLACEMENT3D(#79,$,$);\n#81=IFCLOCALPLACEMENT(#21,#80);\n#82=IFCCARTESIANPOINT((0.,0.,0.));\n#83=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#82,$,$);\n#84=IFCMAPPEDITEM(#42,#83);\n#85=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#84));\n#86=IFCPRODUCTDEFINITIONSHAPE($,$,(#85));\n#87=IFCCOLUMN('1WY90rhG98jRh4nsRE6tgE',$,'Concrete-Column:600x600',$,$,#81,#86,$,$);\n#88=IFCCARTESIANPOINT((8000.,7000.,0.));\n#89=IFCAXIS2PLACEMENT3D(#88,$,$);\n#90=IFCLOCALPLACEMENT(#21,#89);\n#91=IFCCARTESIANPOINT((0.,0.,0.));\n#92=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#91,$,$);\n#93=IFCMAPPEDITEM(#42,#92);\n#94=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#93));\n#95=IFCPRODUCTDEFINITIONSHAPE($,$,(#94));\n#96=IFCCOLUMN('28jLnowCH1sRLhxVzV1l8k',$,'Concrete-Column:600x600',$,$,#90,#95,$,$);\n#97=IFCCARTESIANPOINT((8000.,14000.,0.));\n#98=IFCAXIS2PLACEMENT3D(#97,$,$);\n#99=IFCLOCALPLACEMENT(#21,#98);\n#100=IFCCARTESIANPOINT((0.,0.,0.));\n#101=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#100,$,$);\n#102=IFCMAPPEDITEM(#42,#101);\n#103=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#102));\n#104=IFCPRODUCTDEFINITIONSHAPE($,$,(#103));\n#105=IFCCOLUMN('1gpILSinf7i86UgDuRTUVl',$,'Concrete-Column:600x600',$,$,#99,#104,$,$);\n#106=IFCCARTESIANPOINT((8000.,21000.,0.));\n#107=IFCAXIS2PLACEMENT3D(#106,$,$);\n#108=IFCLOCALPLACEMENT(#21,#107);\n#109=IFCCARTESIANPOINT((0.,0.,0.));\n#110=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#109,$,$);\n#111=IFCMAPPEDITEM(#42,#110);\n#112=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#111));\n#113=IFCPRODUCTDEFINITIONSHAPE($,$,(#112));\n#114=IFCCOLUMN('2kWY9WUILDOPdqecdlkyWH',$,'Concrete-Column:600x600',$,$,#108,#113,$,$);\n#115=IFCCARTESIANPOINT((16000.,0.,0.));\n#116=IFCAXIS2PLACEMENT3D(#115,$,$);\n#117=IFCLOCALPLACEMENT(#21,#116);\n#118=IFCCARTESIANPOINT((0.,0.,0.));\n#119=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#118,$,$);\n#120=IFCMAPPEDITEM(#42,#119);\n#121=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#120));\n#122=IFCPRODUCTDEFINITIONSHAPE($,$,(#121));\n#123=IFCCOLUMN('3qmx1Fob5DZAyTUGxfq0_T',$,'Concrete-Column:600x600',$,$,#117,#122,$,$);\n#124=IFCCARTESIANPOINT((16000.,7000.,0.));\n#125=IFCAXIS2PLACEMENT3D(#124,$,$);\n#126=IFCLOCALPLACEMENT(#21,#125);\n#127=IFCCARTESIANPOINT((0.,0.,0.));\n#128=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#127,$,$);\n#129=IFCMAPPEDITEM(#42,#128);\n#130=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#129));\n#131=IFCPRODUCTDEFINITIONSHAPE($,$,(#130));\n#132=IFCCOLUMN('1_BDRuyhrF1wAOQsxBE4yn',$,'Concrete-Column:600x600',$,$,#126,#131,$,$);\n#133=IFCCARTESIANPOINT((16000.,14000.,0.));\n#134=IFCAXIS2PLACEMENT3D(#133,$,$);\n#135=IFCLOCALPLACEMENT(#21,#134);\n#136=IFCCARTESIANPOINT((0.,0.,0.));\n#137=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#136,$,$);\n#138=IFCMAPPEDITEM(#42,#137);\n#139=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#138));\n#140=IFCPRODUCTDEFINITIONSHAPE($,$,(#139));\n#141=IFCCOLUMN('3TIzl8xln0rfLuGkHfM5FI',$,'Concrete-Column:600x600',$,$,#135,#140,$,$);\n#142=IFCCARTESIANPOINT((16000.,21000.,0.));\n#143=IFCAXIS2PLACEMENT3D(#142,$,$);\n#144=IFCLOCALPLACEMENT(#21,#143);\n#145=IFCCARTESIANPOINT((0.,0.,0.));\n#146=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#145,$,$);\n#147=IFCMAPPEDITEM(#42,#146);\n#148=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#147));\n#149=IFCPRODUCTDEFINITIONSHAPE($,$,(#148));\n#150=IFCCOLUMN('39aSdywY97zAS0zq4dHHTS',$,'Concrete-Column:600x600',$,$,#144,#149,$,$);\n#151=IFCCARTESIANPOINT((24000.,0.,0.));\n#152=IFCAXIS2PLACEMENT3D(#151,$,$);\n#153=IFCLOCALPLACEMENT(#21,#152);\n#154=IFCCARTESIANPOINT((0.,0.,0.));\n#155=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#154,$,$);\n#156=IFCMAPPEDITEM(#42,#155);\n#157=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#156));\n#158=IFCPRODUCTDEFINITIONSHAPE($,$,(#157));\n#159=IFCCOLUMN('21ErpAA5D3n9D50LezQ6zH',$,'Concrete-Column:600x600',$,$,#153,#158,$,$);\n#160=IFCCARTESIANPOINT((24000.,7000.,0.));\n#161=IFCAXIS2PLACEMENT3D(#160,$,$);\n#162=IFCLOCALPLACEMENT(#21,#161);\n#163=IFCCARTESIANPOINT((0.,0.,0.));\n#164=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#163,$,$);\n#165=IFCMAPPEDITEM(#42,#164);\n#166=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#165));\n#167=IFCPRODUCTDEFINITIONSHAPE($,$,(#166));\n#168=IFCCOLUMN('2qv83RIKrDIPiuKKE41vyl',$,'Concrete-Column:600x600',$,$,#162,#167,$,$);\n#169=IFCCARTESIANPOINT((24000.,14000.,0.));\n#170=IFCAXIS2PLACEMENT3D(#169,$,$);\n#171=IFCLOCALPLACEMENT(#21,#170);\n#172=IFCCARTESIANPOINT((0.,0.,0.));\n#173=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#172,$,$);\n#174=IFCMAPPEDITEM(#42,#173);\n#175=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#174));\n#176=IFCPRODUCTDEFINITIONSHAPE($,$,(#175));\n#177=IFCCOLUMN('3stdRYMyzDChtGbvG0ZPb7',$,'Concrete-Column:600x600',$,$,#171,#176,$,$);\n#178=IFCCARTESIANPOINT((0.,0.,0.));\n#179=IFCAXIS2PLACEMENT3D(#178,$,$);\n#180=IFCLOCALPLACEMENT(#25,#179);\n#181=IFCCARTESIANPOINT((0.,0.,0.));\n#182=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#181,$,$);\n#183=IFCMAPPEDITEM(#42,#182);\n#184=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#183));\n#185=IFCPRODUCTDEFINITIONSHAPE($,$,(#184));\n#186=IFCCOLUMN('08vLdg0YzD7QialNwyJRj2',$,'Concrete-Column:600x600',$,$,#180,#185,$,$);\n#187=IFCCARTESIANPOINT((0.,7000.,0.));\n#188=IFCAXIS2PLACEMENT3D(#187,$,$);\n#189=IFCLOCALPLACEMENT(#25,#188);\n#190=IFCCARTESIANPOINT((0.,0.,0.));\n#191=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#190,$,$);\n#192=IFCMAPPEDITEM(#42,#191);\n#193=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#192));\n#194=IFCPRODUCTDEFINITIONSHAPE($,$,(#193));\n#195=IFCCOLUMN('2jkEXz3b58X9Mwk$R7Udy8',$,'Concrete-Column:600x600',$,$,#189,#194,$,$);\n#196=IFCCARTESIANPOINT((0.,14000.,0.));\n#197=IFCAXIS2PLACEMENT3D(#196,$,$);\n#198=IFCLOCALPLACEMENT(#25,#197);\n#199=IFCCARTESIANPOINT((0.,0.,0.));\n#200=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#199,$,$);\n#201=IFCMAPPEDITEM(#42,#200);\n#202=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#201));\n#203=IFCPRODUCTDEFINITIONSHAPE($,$,(#202));\n#204=IFCCOLUMN('3wof9uTbXBEA$$sZPMRW4_',$,'Concrete-Column:600x600',$,$,#198,#203,$,$);\n#205=IFCCARTESIANPOINT((0.,21000.,0.));\n#206=IFCAXIS2PLACEMENT3D(#205,$,$);\n#207=IFCLOCALPLACEMENT(#25,#206);\n#208=IFCCARTESIANPOINT((0.,0.,0.));\n#209=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#208,$,$);\n#210=IFCMAPPEDITEM(#42,#209);\n#211=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#210));\n#212=IFCPRODUCTDEFINITIONSHAPE($,$,(#211));\n#213=IFCCOLUMN('1S$8krhGf2A8Ug3$fLuuCq',$,'Concrete-Column:600x600',$,$,#207,#212,$,$);\n#214=IFCCARTESIANPOINT((8000.,0.,0.));\n#215=IFCAXIS2PLACEMENT3D(#214,$,$);\n#216=IFCLOCALPLACEMENT(#25,#215);\n#217=IFCCARTESIANPOINT((0.,0.,0.));\n#218=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#217,$,$);\n#219=IFCMAPPEDITEM(#42,#218);\n#220=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#219));\n#221=IFCPRODUCTDEFINITIONSHAPE($,$,(#220));\n#222=IFCCOLUMN('0HCIgtb3T8wAd1tAArKbXS',$,'Concrete-Column:600x600',$,$,#216,#221,$,$);\n#223=IFCCARTESIANPOINT((8000.,7000.,0.));\n#224=IFCAXIS2PLACEMENT3D(#223,$,$);\n#225=IFCLOCALPLACEMENT(#25,#224);\n#226=IFCCARTESIANPOINT((0.,0.,0.));\n#227=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#226,$,$);\n#228=IFCMAPPEDITEM(#42,#227);\n#229=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#228));\n#230=IFCPRODUCTDEFINITIONSHAPE($,$,(#229));\n#231=IFCCOLUMN('2xUJ$v9vv6QAIe9sQLoEeB',$,'Concrete-Column:600x600',$,$,#225,#230,$,$);\n#232=IFCCARTESIANPOINT((8000.,14000.,0.));\n#233=IFCAXIS2PLACEMENT3D(#232,$,$);\n#234=IFCLOCALPLACEMENT(#25,#233);\n#235=IFCCARTESIANPOINT((0.,0.,0.));\n#236=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#235,$,$);\n#237=IFCMAPPEDITEM(#42,#236);\n#238=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#237));\n#239=IFCPRODUCTDEFINITIONSHAPE($,$,(#238));\n#240=IFCCOLUMN('2nlP1DTDn8GQ_xVsK9a33h',$,'Concrete-Column:600x600',$,$,#234,#239,$,$);\n#241=IFCCARTESIANPOINT((8000.,21000.,0.));\n#242=IFCAXIS2PLACEMENT3D(#241,$,$);\n#243=IFCLOCALPLACEMENT(#25,#242);\n#244=IFCCARTESIANPOINT((0.,0.,0.));\n#245=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#244,$,$);\n#246=IFCMAPPEDITEM(#42,#245);\n#247=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#246));\n#248=IFCPRODUCTDEFINITIONSHAPE($,$,(#247));\n#249=IFCCOLUMN('1TPTHGmzbA7Oh2jTtqRXJZ',$,'Concrete-Column:600x600',$,$,#243,#248,$,$);\n#250=IFCCARTESIANPOINT((16000.,0.,0.));\n#251=IFCAXIS2PLACEMENT3D(#250,$,$);\n#252=IFCLOCALPLACEMENT(#25,#251);\n#253=IFCCARTESIANPOINT((0.,0.,0.));\n#254=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#253,$,$);\n#255=IFCMAPPEDITEM(#42,#254);\n#256=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#255));\n#257=IFCPRODUCTDEFINITIONSHAPE($,$,(#256));\n#258=IFCCOLUMN('3VQo_QihL8jAdQMS3Jye5h',$,'Concrete-Column:600x600',$,$,#252,#257,$,$);\n#259=IFCCARTESIANPOINT((16000.,7000.,0.));\n#260=IFCAXIS2PLACEMENT3D(#259,$,$);\n#261=IFCLOCALPLACEMENT(#25,#260);\n#262=IFCCARTESIANPOINT((0.,0.,0.));\n#263=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#262,$,$);\n#264=IFCMAPPEDITEM(#42,#263);\n#265=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#264));\n#266=IFCPRODUCTDEFINITIONSHAPE($,$,(#265));\n#267=IFCCOLUMN('2LyaAVirfBexdEmmnhsRpB',$,'Concrete-Column:600x600',$,$,#261,#266,$,$);\n#268=IFCCARTESIANPOINT((16000.,14000.,0.));\n#269=IFCAXIS2PLACEMENT3D(#268,$,$);\n#270=IFCLOCALPLACEMENT(#25,#269);\n#271=IFCCARTESIANPOINT((0.,0.,0.));\n#272=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#271,$,$);\n#273=IFCMAPPEDITEM(#42,#272);\n#274=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#273));\n#275=IFCPRODUCTDEFINITIONSHAPE($,$,(#274));\n#276=IFCCOLUMN('0Mg_NdSB592P5pYvQKqTj7',$,'Concrete-Column:600x600',$,$,#270,#275,$,$);\n#277=IFCCARTESIANPOINT((16000.,21000.,0.));\n#278=IFCAXIS2PLACEMENT3D(#277,$,$);\n#279=IFCLOCALPLACEMENT(#25,#278);\n#280=IFCCARTESIANPOINT((0.,0.,0.));\n#281=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#280,$,$);\n#282=IFCMAPPEDITEM(#42,#281);\n#283=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#282));\n#284=IFCPRODUCTDEFINITIONSHAPE($,$,(#283));\n#285=IFCCOLUMN('3NvWnSjOz0mxLJG6Bq1ebb',$,'Concrete-Column:600x600',$,$,#279,#284,$,$);\n#286=IFCCARTESIANPOINT((24000.,0.,0.));\n#287=IFCAXIS2PLACEMENT3D(#286,$,$);\n#288=IFCLOCALPLACEMENT(#25,#287);\n#289=IFCCARTESIANPOINT((0.,0.,0.));\n#290=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#289,$,$);\n#291=IFCMAPPEDITEM(#42,#290);\n#292=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#291));\n#293=IFCPRODUCTDEFINITIONSHAPE($,$,(#292));\n#294=IFCCOLUMN('14hcGdwxT3LPYheRaVOVs5',$,'Concrete-Column:600x600',$,$,#288,#293,$,$);\n#295=IFCCARTESIANPOINT((24000.,7000.,0.));\n#296=IFCAXIS2PLACEMENT3D(#295,$,$);\n#297=IFCLOCALPLACEMENT(#25,#296);\n#298=IFCCARTESIANPOINT((0.,0.,0.));\n#299=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#298,$,$);\n#300=IFCMAPPEDITEM(#42,#299);\n#301=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#300));\n#302=IFCPRODUCTDEFINITIONSHAPE($,$,(#301));\n#303=IFCCOLUMN('2tAwTZkL529hN1IjLAc8ZV',$,'Concrete-Column:600x600',$,$,#297,#302,$,$);\n#304=IFCCARTESIANPOINT((24000.,14000.,0.));\n#305=IFCAXIS2PLACEMENT3D(#304,$,$);\n#306=IFCLOCALPLACEMENT(#25,#305);\n#307=IFCCARTESIANPOINT((0.,0.,0.));\n#308=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#307,$,$);\n#309=IFCMAPPEDITEM(#42,#308);\n#310=IFCSHAPEREPRESENTATION(#5,'Body','MappedRepresentation',(#309));\n#311=IFCPRODUCTDEFINITIONSHAPE($,$,(#310));\n#312=IFCCOLUMN('238wDuDGT0Uw2XuCPaJH5x',$,'Concrete-Column:600x600',$,$,#306,#311,$,$);\n#313=IFCCARTESIANPOINT((0.,-1500.));\n#314=IFCCARTESIANPOINT((16000.,-1500.));\n#315=IFCCARTESIANPOINT((16000.,0.));\n#316=IFCCARTESIANPOINT((24000.,0.));\n#317=IFCCARTESIANPOINT((24000.,14000.));\n#318=IFCCARTESIANPOINT((16000.,14000.));\n#319=IFCCARTESIANPOINT((16000.,21000.));\n#320=IFCCARTESIANPOINT((0.,21000.));\n#321=IFCCARTESIANPOINT((0.,-1500.));\n#322=IFCPOLYLINE((#313,#314,#315,#316,#317,#318,#319,#320,#321));\n#323=IFCCARTESIANPOINT((12300.,15000.));\n#324=IFCCARTESIANPOINT((15300.,15000.));\n#325=IFCCARTESIANPOINT((15300.,18250.));\n#326=IFCCARTESIANPOINT((12300.,18250.));\n#327=IFCCARTESIANPOINT((12300.,15000.));\n#328=IFCPOLYLINE((#323,#324,#325,#326,#327));\n#329=IFCARBITRARYPROFILEDEFWITHVOIDS(.AREA.,$,#322,(#328));\n#330=IFCCARTESIANPOINT((0.,0.,-200.));\n#331=IFCAXIS2PLACEMENT3D(#330,$,$);\n#332=IFCDIRECTION((0.,0.,1.));\n#333=IFCEXTRUDEDAREASOLID(#329,#331,#332,200.);\n#334=IFCCARTESIANPOINT((0.,0.,0.));\n#335=IFCAXIS2PLACEMENT3D(#334,$,$);\n#336=IFCLOCALPLACEMENT(#25,#335);\n#337=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#333));\n#338=IFCPRODUCTDEFINITIONSHAPE($,$,(#337));\n#339=IFCSLAB('1a$p5Hnc1DAuT6QRvOLfK$',$,'Floor:RC 200',$,$,#336,#338,$,.FLOOR.);\n#340=IFCCARTESIANPOINT((0.,0.));\n#341=IFCAXIS2PLACEMENT2D(#340,$);\n#342=IFCRECTANGLEPROFILEDEF(.AREA.,$,#341,3500.,4000.);\n#343=IFCCARTESIANPOINT((10000.,16250.,-300.));\n#344=IFCAXIS2PLACEMENT3D(#343,$,$);\n#345=IFCLOCALPLACEMENT(#25,#344);\n#346=IFCCARTESIANPOINT((0.,0.,0.));\n#347=IFCAXIS2PLACEMENT3D(#346,$,$);\n#348=IFCDIRECTION((0.,0.,1.));\n#349=IFCEXTRUDEDAREASOLID(#342,#347,#348,500.);\n#350=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#349));\n#351=IFCPRODUCTDEFINITIONSHAPE($,$,(#350));\n#352=IFCOPENINGELEMENT('3yW0aadof0txIRWYqSI$vK',$,'Shaft',$,$,#345,#351,$,$);\n#353=IFCRELVOIDSELEMENT('0LaxkkLnD8ogrWhE5NLqYu',$,$,$,#339,#352);\n#354=IFCCARTESIANPOINT((300.,0.,0.));\n#355=IFCDIRECTION((1.,0.,0.));\n#356=IFCDIRECTION((0.,1.,0.));\n#357=IFCAXIS2PLACEMENT3D(#354,#355,#356);\n#358=IFCLOCALPLACEMENT(#25,#357);\n#359=IFCCARTESIANPOINT((0.,-350.));\n#360=IFCAXIS2PLACEMENT2D(#359,$);\n#361=IFCRECTANGLEPROFILEDEF(.AREA.,$,#360,400.,700.);\n#362=IFCCARTESIANPOINT((0.,0.,0.));\n#363=IFCAXIS2PLACEMENT3D(#362,$,$);\n#364=IFCDIRECTION((0.,0.,1.));\n#365=IFCEXTRUDEDAREASOLID(#361,#363,#364,7400.);\n#366=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#365));\n#367=IFCPRODUCTDEFINITIONSHAPE($,$,(#366));\n#368=IFCBEAM('3qaLQS7ur2N9aUblbex3NY',$,'G1',$,$,#358,#367,$,$);\n#369=IFCCARTESIANPOINT((8300.,0.,0.));\n#370=IFCDIRECTION((1.,0.,0.));\n#371=IFCDIRECTION((0.,1.,0.));\n#372=IFCAXIS2PLACEMENT3D(#369,#370,#371);\n#373=IFCLOCALPLACEMENT(#25,#372);\n#374=IFCCARTESIANPOINT((0.,-350.));\n#375=IFCAXIS2PLACEMENT2D(#374,$);\n#376=IFCRECTANGLEPROFILEDEF(.AREA.,$,#375,400.,700.);\n#377=IFCCARTESIANPOINT((0.,0.,0.));\n#378=IFCAXIS2PLACEMENT3D(#377,$,$);\n#379=IFCDIRECTION((0.,0.,1.));\n#380=IFCEXTRUDEDAREASOLID(#376,#378,#379,7400.);\n#381=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#380));\n#382=IFCPRODUCTDEFINITIONSHAPE($,$,(#381));\n#383=IFCBEAM('2CLMqdFFr6shSSI$wCdLyZ',$,'G1',$,$,#373,#382,$,$);\n#384=IFCCARTESIANPOINT((16300.,0.,0.));\n#385=IFCDIRECTION((1.,0.,0.));\n#386=IFCDIRECTION((0.,1.,0.));\n#387=IFCAXIS2PLACEMENT3D(#384,#385,#386);\n#388=IFCLOCALPLACEMENT(#25,#387);\n#389=IFCCARTESIANPOINT((0.,-350.));\n#390=IFCAXIS2PLACEMENT2D(#389,$);\n#391=IFCRECTANGLEPROFILEDEF(.AREA.,$,#390,400.,700.);\n#392=IFCCARTESIANPOINT((0.,0.,0.));\n#393=IFCAXIS2PLACEMENT3D(#392,$,$);\n#394=IFCDIRECTION((0.,0.,1.));\n#395=IFCEXTRUDEDAREASOLID(#391,#393,#394,7400.);\n#396=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#395));\n#397=IFCPRODUCTDEFINITIONSHAPE($,$,(#396));\n#398=IFCBEAM('3MFxZ4lyz6KgduGEWI_kHa',$,'G1',$,$,#388,#397,$,$);\n#399=IFCCARTESIANPOINT((300.,7000.,0.));\n#400=IFCDIRECTION((1.,0.,0.));\n#401=IFCDIRECTION((0.,1.,0.));\n#402=IFCAXIS2PLACEMENT3D(#399,#400,#401);\n#403=IFCLOCALPLACEMENT(#25,#402);\n#404=IFCCARTESIANPOINT((0.,-350.));\n#405=IFCAXIS2PLACEMENT2D(#404,$);\n#406=IFCRECTANGLEPROFILEDEF(.AREA.,$,#405,400.,700.);\n#407=IFCCARTESIANPOINT((0.,0.,0.));\n#408=IFCAXIS2PLACEMENT3D(#407,$,$);\n#409=IFCDIRECTION((0.,0.,1.));\n#410=IFCEXTRUDEDAREASOLID(#406,#408,#409,7400.);\n#411=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#410));\n#412=IFCPRODUCTDEFINITIONSHAPE($,$,(#411));\n#413=IFCBEAM('1WCRWMXPz9qPKPH1aYzhV2',$,'G1',$,$,#403,#412,$,$);\n#414=IFCCARTESIANPOINT((8300.,7000.,0.));\n#415=IFCDIRECTION((1.,0.,0.));\n#416=IFCDIRECTION((0.,1.,0.));\n#417=IFCAXIS2PLACEMENT3D(#414,#415,#416);\n#418=IFCLOCALPLACEMENT(#25,#417);\n#419=IFCCARTESIANPOINT((0.,-350.));\n#420=IFCAXIS2PLACEMENT2D(#419,$);\n#421=IFCRECTANGLEPROFILEDEF(.AREA.,$,#420,400.,700.);\n#422=IFCCARTESIANPOINT((0.,0.,0.));\n#423=IFCAXIS2PLACEMENT3D(#422,$,$);\n#424=IFCDIRECTION((0.,0.,1.));\n#425=IFCEXTRUDEDAREASOLID(#421,#423,#424,7400.);\n#426=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#425));\n#427=IFCPRODUCTDEFINITIONSHAPE($,$,(#426));\n#428=IFCBEAM('27r8RyksT4R9Q29uOHtDcG',$,'G1',$,$,#418,#427,$,$);\n#429=IFCCARTESIANPOINT((16300.,7000.,0.));\n#430=IFCDIRECTION((1.,0.,0.));\n#431=IFCDIRECTION((0.,1.,0.));\n#432=IFCAXIS2PLACEMENT3D(#429,#430,#431);\n#433=IFCLOCALPLACEMENT(#25,#432);\n#434=IFCCARTESIANPOINT((0.,-350.));\n#435=IFCAXIS2PLACEMENT2D(#434,$);\n#436=IFCRECTANGLEPROFILEDEF(.AREA.,$,#435,400.,700.);\n#437=IFCCARTESIANPOINT((0.,0.,0.));\n#438=IFCAXIS2PLACEMENT3D(#437,$,$);\n#439=IFCDIRECTION((0.,0.,1.));\n#440=IFCEXTRUDEDAREASOLID(#436,#438,#439,7400.);\n#441=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#440));\n#442=IFCPRODUCTDEFINITIONSHAPE($,$,(#441));\n#443=IFCBEAM('1I5dBIlrL2o9HtZsU9X0Rt',$,'G1',$,$,#433,#442,$,$);\n#444=IFCCARTESIANPOINT((300.,14000.,0.));\n#445=IFCDIRECTION((1.,0.,0.));\n#446=IFCDIRECTION((0.,1.,0.));\n#447=IFCAXIS2PLACEMENT3D(#444,#445,#446);\n#448=IFCLOCALPLACEMENT(#25,#447);\n#449=IFCCARTESIANPOINT((0.,-350.));\n#450=IFCAXIS2PLACEMENT2D(#449,$);\n#451=IFCRECTANGLEPROFILEDEF(.AREA.,$,#450,400.,700.);\n#452=IFCCARTESIANPOINT((0.,0.,0.));\n#453=IFCAXIS2PLACEMENT3D(#452,$,$);\n#454=IFCDIRECTION((0.,0.,1.));\n#455=IFCEXTRUDEDAREASOLID(#451,#453,#454,7400.);\n#456=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#455));\n#457=IFCPRODUCTDEFINITIONSHAPE($,$,(#456));\n#458=IFCBEAM('1bb2K54hn0nQGJZfXTCl0t',$,'G1',$,$,#448,#457,$,$);\n#459=IFCCARTESIANPOINT((8300.,14000.,0.));\n#460=IFCDIRECTION((1.,0.,0.));\n#461=IFCDIRECTION((0.,1.,0.));\n#462=IFCAXIS2PLACEMENT3D(#459,#460,#461);\n#463=IFCLOCALPLACEMENT(#25,#462);\n#464=IFCCARTESIANPOINT((0.,-350.));\n#465=IFCAXIS2PLACEMENT2D(#464,$);\n#466=IFCRECTANGLEPROFILEDEF(.AREA.,$,#465,400.,700.);\n#467=IFCCARTESIANPOINT((0.,0.,0.));\n#468=IFCAXIS2PLACEMENT3D(#467,$,$);\n#469=IFCDIRECTION((0.,0.,1.));\n#470=IFCEXTRUDEDAREASOLID(#466,#468,#469,7400.);\n#471=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#470));\n#472=IFCPRODUCTDEFINITIONSHAPE($,$,(#471));\n#473=IFCBEAM('3hyIsydDL6$Ph0Go136EBs',$,'G1',$,$,#463,#472,$,$);\n#474=IFCCARTESIANPOINT((16300.,14000.,0.));\n#475=IFCDIRECTION((1.,0.,0.));\n#476=IFCDIRECTION((0.,1.,0.));\n#477=IFCAXIS2PLACEMENT3D(#474,#475,#476);\n#478=IFCLOCALPLACEMENT(#25,#477);\n#479=IFCCARTESIANPOINT((0.,-350.));\n#480=IFCAXIS2PLACEMENT2D(#479,$);\n#481=IFCRECTANGLEPROFILEDEF(.AREA.,$,#480,400.,700.);\n#482=IFCCARTESIANPOINT((0.,0.,0.));\n#483=IFCAXIS2PLACEMENT3D(#482,$,$);\n#484=IFCDIRECTION((0.,0.,1.));\n#485=IFCEXTRUDEDAREASOLID(#481,#483,#484,7400.);\n#486=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#485));\n#487=IFCPRODUCTDEFINITIONSHAPE($,$,(#486));\n#488=IFCBEAM('0FoNpJYQ57CvNgTlU$GR9P',$,'G1',$,$,#478,#487,$,$);\n#489=IFCCARTESIANPOINT((300.,21000.,0.));\n#490=IFCDIRECTION((1.,0.,0.));\n#491=IFCDIRECTION((0.,1.,0.));\n#492=IFCAXIS2PLACEMENT3D(#489,#490,#491);\n#493=IFCLOCALPLACEMENT(#25,#492);\n#494=IFCCARTESIANPOINT((0.,-350.));\n#495=IFCAXIS2PLACEMENT2D(#494,$);\n#496=IFCRECTANGLEPROFILEDEF(.AREA.,$,#495,400.,700.);\n#497=IFCCARTESIANPOINT((0.,0.,0.));\n#498=IFCAXIS2PLACEMENT3D(#497,$,$);\n#499=IFCDIRECTION((0.,0.,1.));\n#500=IFCEXTRUDEDAREASOLID(#496,#498,#499,7400.);\n#501=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#500));\n#502=IFCPRODUCTDEFINITIONSHAPE($,$,(#501));\n#503=IFCBEAM('3K4pQ_cJHDPgw21QE2BqG8',$,'G1',$,$,#493,#502,$,$);\n#504=IFCCARTESIANPOINT((8300.,21000.,0.));\n#505=IFCDIRECTION((1.,0.,0.));\n#506=IFCDIRECTION((0.,1.,0.));\n#507=IFCAXIS2PLACEMENT3D(#504,#505,#506);\n#508=IFCLOCALPLACEMENT(#25,#507);\n#509=IFCCARTESIANPOINT((0.,-350.));\n#510=IFCAXIS2PLACEMENT2D(#509,$);\n#511=IFCRECTANGLEPROFILEDEF(.AREA.,$,#510,400.,700.);\n#512=IFCCARTESIANPOINT((0.,0.,0.));\n#513=IFCAXIS2PLACEMENT3D(#512,$,$);\n#514=IFCDIRECTION((0.,0.,1.));\n#515=IFCEXTRUDEDAREASOLID(#511,#513,#514,7400.);\n#516=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#515));\n#517=IFCPRODUCTDEFINITIONSHAPE($,$,(#516));\n#518=IFCBEAM('0_Usr313D74wsAcOSscUHb',$,'G1',$,$,#508,#517,$,$);\n#519=IFCCARTESIANPOINT((0.,300.,0.));\n#520=IFCDIRECTION((0.,1.,0.));\n#521=IFCDIRECTION((-1.,0.,0.));\n#522=IFCAXIS2PLACEMENT3D(#519,#520,#521);\n#523=IFCLOCALPLACEMENT(#25,#522);\n#524=IFCCARTESIANPOINT((0.,-350.));\n#525=IFCAXIS2PLACEMENT2D(#524,$);\n#526=IFCRECTANGLEPROFILEDEF(.AREA.,$,#525,400.,700.);\n#527=IFCCARTESIANPOINT((0.,0.,0.));\n#528=IFCAXIS2PLACEMENT3D(#527,$,$);\n#529=IFCDIRECTION((0.,0.,1.));\n#530=IFCEXTRUDEDAREASOLID(#526,#528,#529,6400.);\n#531=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#530));\n#532=IFCPRODUCTDEFINITIONSHAPE($,$,(#531));\n#533=IFCBEAM('1ARj1WeUzBQ9mywTYQDP8U',$,'G2',$,$,#523,#532,$,$);\n#534=IFCCARTESIANPOINT((0.,7300.,0.));\n#535=IFCDIRECTION((0.,1.,0.));\n#536=IFCDIRECTION((-1.,0.,0.));\n#537=IFCAXIS2PLACEMENT3D(#534,#535,#536);\n#538=IFCLOCALPLACEMENT(#25,#537);\n#539=IFCCARTESIANPOINT((0.,-350.));\n#540=IFCAXIS2PLACEMENT2D(#539,$);\n#541=IFCRECTANGLEPROFILEDEF(.AREA.,$,#540,400.,700.);\n#542=IFCCARTESIANPOINT((0.,0.,0.));\n#543=IFCAXIS2PLACEMENT3D(#542,$,$);\n#544=IFCDIRECTION((0.,0.,1.));\n#545=IFCEXTRUDEDAREASOLID(#541,#543,#544,6400.);\n#546=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#545));\n#547=IFCPRODUCTDEFINITIONSHAPE($,$,(#546));\n#548=IFCBEAM('3PddWbwH1Em8Gn7maKbeD3',$,'G2',$,$,#538,#547,$,$);\n#549=IFCCARTESIANPOINT((0.,14300.,0.));\n#550=IFCDIRECTION((0.,1.,0.));\n#551=IFCDIRECTION((-1.,0.,0.));\n#552=IFCAXIS2PLACEMENT3D(#549,#550,#551);\n#553=IFCLOCALPLACEMENT(#25,#552);\n#554=IFCCARTESIANPOINT((0.,-350.));\n#555=IFCAXIS2PLACEMENT2D(#554,$);\n#556=IFCRECTANGLEPROFILEDEF(.AREA.,$,#555,400.,700.);\n#557=IFCCARTESIANPOINT((0.,0.,0.));\n#558=IFCAXIS2PLACEMENT3D(#557,$,$);\n#559=IFCDIRECTION((0.,0.,1.));\n#560=IFCEXTRUDEDAREASOLID(#556,#558,#559,6400.);\n#561=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#560));\n#562=IFCPRODUCTDEFINITIONSHAPE($,$,(#561));\n#563=IFCBEAM('0FzqerRxbAVOOxuJVv4T3n',$,'G2',$,$,#553,#562,$,$);\n#564=IFCCARTESIANPOINT((8000.,300.,0.));\n#565=IFCDIRECTION((0.,1.,0.));\n#566=IFCDIRECTION((-1.,0.,0.));\n#567=IFCAXIS2PLACEMENT3D(#564,#565,#566);\n#568=IFCLOCALPLACEMENT(#25,#567);\n#569=IFCCARTESIANPOINT((0.,-350.));\n#570=IFCAXIS2PLACEMENT2D(#569,$);\n#571=IFCRECTANGLEPROFILEDEF(.AREA.,$,#570,400.,700.);\n#572=IFCCARTESIANPOINT((0.,0.,0.));\n#573=IFCAXIS2PLACEMENT3D(#572,$,$);\n#574=IFCDIRECTION((0.,0.,1.));\n#575=IFCEXTRUDEDAREASOLID(#571,#573,#574,6400.);\n#576=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#575));\n#577=IFCPRODUCTDEFINITIONSHAPE($,$,(#576));\n#578=IFCBEAM('2R0ZooLGj5Xwv45JJJZkjT',$,'G2',$,$,#568,#577,$,$);\n#579=IFCCARTESIANPOINT((8000.,7300.,0.));\n#580=IFCDIRECTION((0.,1.,0.));\n#581=IFCDIRECTION((-1.,0.,0.));\n#582=IFCAXIS2PLACEMENT3D(#579,#580,#581);\n#583=IFCLOCALPLACEMENT(#25,#582);\n#584=IFCCARTESIANPOINT((0.,-350.));\n#585=IFCAXIS2PLACEMENT2D(#584,$);\n#586=IFCRECTANGLEPROFILEDEF(.AREA.,$,#585,400.,700.);\n#587=IFCCARTESIANPOINT((0.,0.,0.));\n#588=IFCAXIS2PLACEMENT3D(#587,$,$);\n#589=IFCDIRECTION((0.,0.,1.));\n#590=IFCEXTRUDEDAREASOLID(#586,#588,#589,6400.);\n#591=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#590));\n#592=IFCPRODUCTDEFINITIONSHAPE($,$,(#591));\n#593=IFCBEAM('0a$DjXUqfDr85PwFhgXmnY',$,'G2',$,$,#583,#592,$,$);\n#594=IFCCARTESIANPOINT((8000.,14300.,0.));\n#595=IFCDIRECTION((0.,1.,0.));\n#596=IFCDIRECTION((-1.,0.,0.));\n#597=IFCAXIS2PLACEMENT3D(#594,#595,#596);\n#598=IFCLOCALPLACEMENT(#25,#597);\n#599=IFCCARTESIANPOINT((0.,-350.));\n#600=IFCAXIS2PLACEMENT2D(#599,$);\n#601=IFCRECTANGLEPROFILEDEF(.AREA.,$,#600,400.,700.);\n#602=IFCCARTESIANPOINT((0.,0.,0.));\n#603=IFCAXIS2PLACEMENT3D(#602,$,$);\n#604=IFCDIRECTION((0.,0.,1.));\n#605=IFCEXTRUDEDAREASOLID(#601,#603,#604,6400.);\n#606=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#605));\n#607=IFCPRODUCTDEFINITIONSHAPE($,$,(#606));\n#608=IFCBEAM('2xJQJQtmrD9uKtE8_VcgIP',$,'G2',$,$,#598,#607,$,$);\n#609=IFCCARTESIANPOINT((16000.,300.,0.));\n#610=IFCDIRECTION((0.,1.,0.));\n#611=IFCDIRECTION((-1.,0.,0.));\n#612=IFCAXIS2PLACEMENT3D(#609,#610,#611);\n#613=IFCLOCALPLACEMENT(#25,#612);\n#614=IFCCARTESIANPOINT((0.,-350.));\n#615=IFCAXIS2PLACEMENT2D(#614,$);\n#616=IFCRECTANGLEPROFILEDEF(.AREA.,$,#615,400.,700.);\n#617=IFCCARTESIANPOINT((0.,0.,0.));\n#618=IFCAXIS2PLACEMENT3D(#617,$,$);\n#619=IFCDIRECTION((0.,0.,1.));\n#620=IFCEXTRUDEDAREASOLID(#616,#618,#619,6400.);\n#621=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#620));\n#622=IFCPRODUCTDEFINITIONSHAPE($,$,(#621));\n#623=IFCBEAM('3jaxA0Q6f19gvfOKN0dd6y',$,'G2',$,$,#613,#622,$,$);\n#624=IFCCARTESIANPOINT((16000.,7300.,0.));\n#625=IFCDIRECTION((0.,1.,0.));\n#626=IFCDIRECTION((-1.,0.,0.));\n#627=IFCAXIS2PLACEMENT3D(#624,#625,#626);\n#628=IFCLOCALPLACEMENT(#25,#627);\n#629=IFCCARTESIANPOINT((0.,-350.));\n#630=IFCAXIS2PLACEMENT2D(#629,$);\n#631=IFCRECTANGLEPROFILEDEF(.AREA.,$,#630,400.,700.);\n#632=IFCCARTESIANPOINT((0.,0.,0.));\n#633=IFCAXIS2PLACEMENT3D(#632,$,$);\n#634=IFCDIRECTION((0.,0.,1.));\n#635=IFCEXTRUDEDAREASOLID(#631,#633,#634,6400.);\n#636=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#635));\n#637=IFCPRODUCTDEFINITIONSHAPE($,$,(#636));\n#638=IFCBEAM('3_tAVG4ZP0ifw$Y8xrQRnh',$,'G2',$,$,#628,#637,$,$);\n#639=IFCCARTESIANPOINT((16000.,14300.,0.));\n#640=IFCDIRECTION((0.,1.,0.));\n#641=IFCDIRECTION((-1.,0.,0.));\n#642=IFCAXIS2PLACEMENT3D(#639,#640,#641);\n#643=IFCLOCALPLACEMENT(#25,#642);\n#644=IFCCARTESIANPOINT((0.,-350.));\n#645=IFCAXIS2PLACEMENT2D(#644,$);\n#646=IFCRECTANGLEPROFILEDEF(.AREA.,$,#645,400.,700.);\n#647=IFCCARTESIANPOINT((0.,0.,0.));\n#648=IFCAXIS2PLACEMENT3D(#647,$,$);\n#649=IFCDIRECTION((0.,0.,1.));\n#650=IFCEXTRUDEDAREASOLID(#646,#648,#649,6400.);\n#651=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#650));\n#652=IFCPRODUCTDEFINITIONSHAPE($,$,(#651));\n#653=IFCBEAM('1ZJQTd5JD0GBMyzSwL71sj',$,'G2',$,$,#643,#652,$,$);\n#654=IFCCARTESIANPOINT((24000.,300.,0.));\n#655=IFCDIRECTION((0.,1.,0.));\n#656=IFCDIRECTION((-1.,0.,0.));\n#657=IFCAXIS2PLACEMENT3D(#654,#655,#656);\n#658=IFCLOCALPLACEMENT(#25,#657);\n#659=IFCCARTESIANPOINT((0.,-350.));\n#660=IFCAXIS2PLACEMENT2D(#659,$);\n#661=IFCRECTANGLEPROFILEDEF(.AREA.,$,#660,400.,700.);\n#662=IFCCARTESIANPOINT((0.,0.,0.));\n#663=IFCAXIS2PLACEMENT3D(#662,$,$);\n#664=IFCDIRECTION((0.,0.,1.));\n#665=IFCEXTRUDEDAREASOLID(#661,#663,#664,6400.);\n#666=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#665));\n#667=IFCPRODUCTDEFINITIONSHAPE($,$,(#666));\n#668=IFCBEAM('1$eYdEeZ93mBzdMT3LF7NY',$,'G2',$,$,#658,#667,$,$);\n#669=IFCCARTESIANPOINT((24000.,7300.,0.));\n#670=IFCDIRECTION((0.,1.,0.));\n#671=IFCDIRECTION((-1.,0.,0.));\n#672=IFCAXIS2PLACEMENT3D(#669,#670,#671);\n#673=IFCLOCALPLACEMENT(#25,#672);\n#674=IFCCARTESIANPOINT((0.,-350.));\n#675=IFCAXIS2PLACEMENT2D(#674,$);\n#676=IFCRECTANGLEPROFILEDEF(.AREA.,$,#675,400.,700.);\n#677=IFCCARTESIANPOINT((0.,0.,0.));\n#678=IFCAXIS2PLACEMENT3D(#677,$,$);\n#679=IFCDIRECTION((0.,0.,1.));\n#680=IFCEXTRUDEDAREASOLID(#676,#678,#679,6400.);\n#681=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#680));\n#682=IFCPRODUCTDEFINITIONSHAPE($,$,(#681));\n#683=IFCBEAM('2iSKQ3kuD9x9y3an8YA20p',$,'G2',$,$,#673,#682,$,$);\n#684=IFCCARTESIANPOINT((4000.,200.,0.));\n#685=IFCDIRECTION((0.,1.,0.));\n#686=IFCDIRECTION((-1.,0.,0.));\n#687=IFCAXIS2PLACEMENT3D(#684,#685,#686);\n#688=IFCLOCALPLACEMENT(#25,#687);\n#689=IFCCARTESIANPOINT((0.,-300.));\n#690=IFCAXIS2PLACEMENT2D(#689,$);\n#691=IFCRECTANGLEPROFILEDEF(.AREA.,$,#690,400.,600.);\n#692=IFCCARTESIANPOINT((0.,0.,0.));\n#693=IFCAXIS2PLACEMENT3D(#692,$,$);\n#694=IFCDIRECTION((0.,0.,1.));\n#695=IFCEXTRUDEDAREASOLID(#691,#693,#694,6600.);\n#696=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#695));\n#697=IFCPRODUCTDEFINITIONSHAPE($,$,(#696));\n#698=IFCBEAM('2GclL$nxfDj9evOuuLnupK',$,'B1',$,$,#688,#697,$,$);\n#699=IFCCARTESIANPOINT((4000.,7200.,0.));\n#700=IFCDIRECTION((0.,1.,0.));\n#701=IFCDIRECTION((-1.,0.,0.));\n#702=IFCAXIS2PLACEMENT3D(#699,#700,#701);\n#703=IFCLOCALPLACEMENT(#25,#702);\n#704=IFCCARTESIANPOINT((0.,-300.));\n#705=IFCAXIS2PLACEMENT2D(#704,$);\n#706=IFCRECTANGLEPROFILEDEF(.AREA.,$,#705,400.,600.);\n#707=IFCCARTESIANPOINT((0.,0.,0.));\n#708=IFCAXIS2PLACEMENT3D(#707,$,$);\n#709=IFCDIRECTION((0.,0.,1.));\n#710=IFCEXTRUDEDAREASOLID(#706,#708,#709,6600.);\n#711=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#710));\n#712=IFCPRODUCTDEFINITIONSHAPE($,$,(#711));\n#713=IFCBEAM('26$ROo06P6YvxctYw0krHH',$,'B1',$,$,#703,#712,$,$);\n#714=IFCCARTESIANPOINT((4000.,14200.,0.));\n#715=IFCDIRECTION((0.,1.,0.));\n#716=IFCDIRECTION((-1.,0.,0.));\n#717=IFCAXIS2PLACEMENT3D(#714,#715,#716);\n#718=IFCLOCALPLACEMENT(#25,#717);\n#719=IFCCARTESIANPOINT((0.,-300.));\n#720=IFCAXIS2PLACEMENT2D(#719,$);\n#721=IFCRECTANGLEPROFILEDEF(.AREA.,$,#720,400.,600.);\n#722=IFCCARTESIANPOINT((0.,0.,0.));\n#723=IFCAXIS2PLACEMENT3D(#722,$,$);\n#724=IFCDIRECTION((0.,0.,1.));\n#725=IFCEXTRUDEDAREASOLID(#721,#723,#724,6600.);\n#726=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#725));\n#727=IFCPRODUCTDEFINITIONSHAPE($,$,(#726));\n#728=IFCBEAM('2rzXVFRC96IgV5IxZYz8FE',$,'B1',$,$,#718,#727,$,$);\n#729=IFCCARTESIANPOINT((12000.,200.,0.));\n#730=IFCDIRECTION((0.,1.,0.));\n#731=IFCDIRECTION((-1.,0.,0.));\n#732=IFCAXIS2PLACEMENT3D(#729,#730,#731);\n#733=IFCLOCALPLACEMENT(#25,#732);\n#734=IFCCARTESIANPOINT((0.,-300.));\n#735=IFCAXIS2PLACEMENT2D(#734,$);\n#736=IFCRECTANGLEPROFILEDEF(.AREA.,$,#735,400.,600.);\n#737=IFCCARTESIANPOINT((0.,0.,0.));\n#738=IFCAXIS2PLACEMENT3D(#737,$,$);\n#739=IFCDIRECTION((0.,0.,1.));\n#740=IFCEXTRUDEDAREASOLID(#736,#738,#739,6600.);\n#741=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#740));\n#742=IFCPRODUCTDEFINITIONSHAPE($,$,(#741));\n#743=IFCBEAM('3$3Xda3MD1dAuHC9rBf3G4',$,'B1',$,$,#733,#742,$,$);\n#744=IFCCARTESIANPOINT((12000.,7200.,0.));\n#745=IFCDIRECTION((0.,1.,0.));\n#746=IFCDIRECTION((-1.,0.,0.));\n#747=IFCAXIS2PLACEMENT3D(#744,#745,#746);\n#748=IFCLOCALPLACEMENT(#25,#747);\n#749=IFCCARTESIANPOINT((0.,-300.));\n#750=IFCAXIS2PLACEMENT2D(#749,$);\n#751=IFCRECTANGLEPROFILEDEF(.AREA.,$,#750,400.,600.);\n#752=IFCCARTESIANPOINT((0.,0.,0.));\n#753=IFCAXIS2PLACEMENT3D(#752,$,$);\n#754=IFCDIRECTION((0.,0.,1.));\n#755=IFCEXTRUDEDAREASOLID(#751,#753,#754,6600.);\n#756=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#755));\n#757=IFCPRODUCTDEFINITIONSHAPE($,$,(#756));\n#758=IFCBEAM('1pt9um9on1Ee0GSksIvUUY',$,'B1',$,$,#748,#757,$,$);\n#759=IFCCARTESIANPOINT((12000.,14200.,0.));\n#760=IFCDIRECTION((0.,1.,0.));\n#761=IFCDIRECTION((-1.,0.,0.));\n#762=IFCAXIS2PLACEMENT3D(#759,#760,#761);\n#763=IFCLOCALPLACEMENT(#25,#762);\n#764=IFCCARTESIANPOINT((0.,-300.));\n#765=IFCAXIS2PLACEMENT2D(#764,$);\n#766=IFCRECTANGLEPROFILEDEF(.AREA.,$,#765,400.,600.);\n#767=IFCCARTESIANPOINT((0.,0.,0.));\n#768=IFCAXIS2PLACEMENT3D(#767,$,$);\n#769=IFCDIRECTION((0.,0.,1.));\n#770=IFCEXTRUDEDAREASOLID(#766,#768,#769,6600.);\n#771=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#770));\n#772=IFCPRODUCTDEFINITIONSHAPE($,$,(#771));\n#773=IFCBEAM('1AIvf5ukbDSBPDKieGmD$U',$,'B1',$,$,#763,#772,$,$);\n#774=IFCCARTESIANPOINT((20000.,200.,0.));\n#775=IFCDIRECTION((0.,1.,0.));\n#776=IFCDIRECTION((-1.,0.,0.));\n#777=IFCAXIS2PLACEMENT3D(#774,#775,#776);\n#778=IFCLOCALPLACEMENT(#25,#777);\n#779=IFCCARTESIANPOINT((0.,-300.));\n#780=IFCAXIS2PLACEMENT2D(#779,$);\n#781=IFCRECTANGLEPROFILEDEF(.AREA.,$,#780,400.,600.);\n#782=IFCCARTESIANPOINT((0.,0.,0.));\n#783=IFCAXIS2PLACEMENT3D(#782,$,$);\n#784=IFCDIRECTION((0.,0.,1.));\n#785=IFCEXTRUDEDAREASOLID(#781,#783,#784,6600.);\n#786=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#785));\n#787=IFCPRODUCTDEFINITIONSHAPE($,$,(#786));\n#788=IFCBEAM('3Hfewq$nH9p8oySNGCZ2CW',$,'B1',$,$,#778,#787,$,$);\n#789=IFCCARTESIANPOINT((20000.,7200.,0.));\n#790=IFCDIRECTION((0.,1.,0.));\n#791=IFCDIRECTION((-1.,0.,0.));\n#792=IFCAXIS2PLACEMENT3D(#789,#790,#791);\n#793=IFCLOCALPLACEMENT(#25,#792);\n#794=IFCCARTESIANPOINT((0.,-300.));\n#795=IFCAXIS2PLACEMENT2D(#794,$);\n#796=IFCRECTANGLEPROFILEDEF(.AREA.,$,#795,400.,600.);\n#797=IFCCARTESIANPOINT((0.,0.,0.));\n#798=IFCAXIS2PLACEMENT3D(#797,$,$);\n#799=IFCDIRECTION((0.,0.,1.));\n#800=IFCEXTRUDEDAREASOLID(#796,#798,#799,6600.);\n#801=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#800));\n#802=IFCPRODUCTDEFINITIONSHAPE($,$,(#801));\n#803=IFCBEAM('09PcuQt8DDKfmwEoctmpf9',$,'B1',$,$,#793,#802,$,$);\n#804=IFCCARTESIANPOINT((8000.,14125.,0.));\n#805=IFCDIRECTION((0.,0.,1.));\n#806=IFCDIRECTION((1.,0.,0.));\n#807=IFCAXIS2PLACEMENT3D(#804,#805,#806);\n#808=IFCLOCALPLACEMENT(#21,#807);\n#809=IFCCARTESIANPOINT((2000.,0.));\n#810=IFCAXIS2PLACEMENT2D(#809,$);\n#811=IFCRECTANGLEPROFILEDEF(.AREA.,$,#810,4000.,250.);\n#812=IFCCARTESIANPOINT((0.,0.,0.));\n#813=IFCAXIS2PLACEMENT3D(#812,$,$);\n#814=IFCDIRECTION((0.,0.,1.));\n#815=IFCEXTRUDEDAREASOLID(#811,#813,#814,3800.);\n#816=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#815));\n#817=IFCPRODUCTDEFINITIONSHAPE($,$,(#816));\n#818=IFCWALLSTANDARDCASE('2cA9HDiEzE5vNpos8$9ALd',$,'Basic Wall:RC 250',$,$,#808,#817,$,$);\n#819=IFCCARTESIANPOINT((8000.,18375.,0.));\n#820=IFCDIRECTION((0.,0.,1.));\n#821=IFCDIRECTION((1.,0.,0.));\n#822=IFCAXIS2PLACEMENT3D(#819,#820,#821);\n#823=IFCLOCALPLACEMENT(#21,#822);\n#824=IFCCARTESIANPOINT((2000.,0.));\n#825=IFCAXIS2PLACEMENT2D(#824,$);\n#826=IFCRECTANGLEPROFILEDEF(.AREA.,$,#825,4000.,250.);\n#827=IFCCARTESIANPOINT((0.,0.,0.));\n#828=IFCAXIS2PLACEMENT3D(#827,$,$);\n#829=IFCDIRECTION((0.,0.,1.));\n#830=IFCEXTRUDEDAREASOLID(#826,#828,#829,3800.);\n#831=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#830));\n#832=IFCPRODUCTDEFINITIONSHAPE($,$,(#831));\n#833=IFCWALLSTANDARDCASE('2OXvge3nX6hQS9JISA0BoM',$,'Basic Wall:RC 250',$,$,#823,#832,$,$);\n#834=IFCCARTESIANPOINT((8125.,14000.,0.));\n#835=IFCDIRECTION((0.,0.,1.));\n#836=IFCDIRECTION((0.,1.,0.));\n#837=IFCAXIS2PLACEMENT3D(#834,#835,#836);\n#838=IFCLOCALPLACEMENT(#21,#837);\n#839=IFCCARTESIANPOINT((2250.,0.));\n#840=IFCAXIS2PLACEMENT2D(#839,$);\n#841=IFCRECTANGLEPROFILEDEF(.AREA.,$,#840,4500.,250.);\n#842=IFCCARTESIANPOINT((0.,0.,0.));\n#843=IFCAXIS2PLACEMENT3D(#842,$,$);\n#844=IFCDIRECTION((0.,0.,1.));\n#845=IFCEXTRUDEDAREASOLID(#841,#843,#844,3800.);\n#846=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#845));\n#847=IFCPRODUCTDEFINITIONSHAPE($,$,(#846));\n#848=IFCWALLSTANDARDCASE('1cgkM8wr14qP1IgjtDDz5M',$,'Basic Wall:RC 250',$,$,#838,#847,$,$);\n#849=IFCCARTESIANPOINT((11875.,14000.,0.));\n#850=IFCDIRECTION((0.,0.,1.));\n#851=IFCDIRECTION((0.,1.,0.));\n#852=IFCAXIS2PLACEMENT3D(#849,#850,#851);\n#853=IFCLOCALPLACEMENT(#21,#852);\n#854=IFCCARTESIANPOINT((2250.,0.));\n#855=IFCAXIS2PLACEMENT2D(#854,$);\n#856=IFCRECTANGLEPROFILEDEF(.AREA.,$,#855,4500.,250.);\n#857=IFCCARTESIANPOINT((0.,0.,0.));\n#858=IFCAXIS2PLACEMENT3D(#857,$,$);\n#859=IFCDIRECTION((0.,0.,1.));\n#860=IFCEXTRUDEDAREASOLID(#856,#858,#859,3800.);\n#861=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#860));\n#862=IFCPRODUCTDEFINITIONSHAPE($,$,(#861));\n#863=IFCWALLSTANDARDCASE('17KjmetI50UBkCMEtyB9MT',$,'Basic Wall:RC 250',$,$,#853,#862,$,$);\n#864=IFCRELCONTAINEDINSPATIALSTRUCTURE('0MheXvrlP7aA2tqI9f9$WK',$,$,$,(#51,#60,#69,#78,#87,#96,#105,#114,#123,#132,#141,#150,#159,#168,#177,#818,#833,#848,#863),#22);\n#865=IFCRELCONTAINEDINSPATIALSTRUCTURE('1O8wQ6pI54_xIBdZUneWAA',$,$,$,(#186,#195,#204,#213,#222,#231,#240,#249,#258,#267,#276,#285,#294,#303,#312,#339,#368,#383,#398,#413,#428,#443,#458,#473,#488,#503,#518,#533,#548,#563,#578,#593,#608,#623,#638,#653,#668,#683,#698,#713,#728,#743,#758,#773,#788,#803),#26);\nENDSEC;\nEND-ISO-10303-21;\n";
+let IFCM = null;
+function ifcStatus(html, kind) { const el = $('#ifcStatus'); el.className = 'ifc-status ' + (kind || ''); el.innerHTML = html; }
+function loadIFCText(text, name) {
+  ifcStatus('모델을 읽는 중…');
+  $('#ifcPick').hidden = true;
+  setTimeout(() => {
+    try {
+      const t0 = performance.now();
+      IFCM = IFCReader.parse(text);
+      const cand = IFCM.storeys.filter(s => s.count.slab > 0);
+      if (!IFCM.storeys.length) throw new Error('층(IfcBuildingStorey) 정보가 없습니다.');
+      if (!cand.length) throw new Error('슬래브(바닥)가 있는 층이 없습니다. IFC 내보내기에서 바닥이 포함됐는지 확인하세요.');
+      const sel = $('#storey');
+      sel.innerHTML = IFCM.storeys.map(s => `<option value="${s.id}" ${s.count.slab ? '' : 'disabled'}>${esc(s.name)} (슬래브 ${s.count.slab}, 기둥 ${s.count.column}, 보 ${s.count.beam})</option>`).join('');
+      const best = cand.slice().sort((a, b) => (b.count.beam - a.count.beam) || (b.elev - a.elev))[0];
+      sel.value = best.id;
+      $('#ifcPick').hidden = false;
+      ifcStatus(`${esc(name)} — 객체 ${IFCM.count.toLocaleString()}개, 층 ${IFCM.storeys.length}개를 읽었습니다 (${((performance.now() - t0) / 1000).toFixed(1)}초). 층을 고르고 구획하세요.`, 'ok');
+    } catch (e) { IFCM = null; ifcStatus('모델을 읽지 못했습니다: ' + esc(e.message), 'err'); }
+  }, 30);
+}
+function handleFile(f) {
+  if (!f) return;
+  if (/\.rvt$/i.test(f.name) || /\.rfa$/i.test(f.name)) {
+    ifcStatus(`Revit 원본 파일(.rvt)은 Autodesk 전용 형식이라 브라우저에서 열 수 없습니다. Revit에서 IFC로 한 번 저장해 올려주세요.<ol><li>Revit에서 모델 열기</li><li>파일 → 내보내기 → IFC</li><li>IFC 버전은 기본값(IFC 2x3 또는 IFC4) 그대로 → 내보내기</li><li>저장된 .ifc 파일을 여기에 올리기</li></ol>`, 'err');
+    return;
+  }
+  const r = new FileReader();
+  r.onload = () => loadIFCText(r.result, f.name);
+  r.onerror = () => ifcStatus('파일을 읽지 못했습니다.', 'err');
+  ifcStatus('파일을 여는 중…');
+  r.readAsText(f, 'iso-8859-1');
+}
+$('#ifcFile').addEventListener('change', e => handleFile(e.target.files[0]));
+const drop = $('#drop');
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
+$('#ifcSample').addEventListener('click', () => loadIFCText(SAMPLE_IFC, '예제_RC_업무시설.ifc'));
+$('#ifcRun').addEventListener('click', () => {
+  if (!IFCM) return;
+  try {
+    const r = IFCM.extract(+$('#storey').value);
+    fill({ project: r.project, floor: r.floor, slab: r.slab, t: r.t, C: r.C, columns: r.columns, beams: r.beams, walls: r.walls, openings: r.openings });
+    ifcStatus(`${esc(r.floor)}: 기둥 ${r.columns.length}, 보 ${r.beams.length}, 벽 ${r.walls.length}, 개구부 ${r.openings.length}개를 찾았습니다. 타설량 ${f1(r.info.slabVol)}(슬래브) + ${f1(r.info.beamVol)}(슬래브 아래 보) = ${f1(r.C)} ㎥.` + (r.W.length ? '<br>' + r.W.map(esc).join('<br>') : ''), 'ok');
+    run();
+  } catch (e) { ifcStatus(esc(e.message), 'err'); }
+});
+fill(EXAMPLE);
+</script></body></html>
