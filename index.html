@@ -64,7 +64,7 @@ input[type=text],input[type=number],textarea,select{display:block;width:100%;fon
 input[type=text]:hover,input[type=number]:hover,textarea:hover,select:hover{background:color-mix(in srgb,var(--field) 60%,var(--card))}
 input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);background:var(--card);box-shadow:0 0 0 3px var(--accent-soft)}
 textarea{min-height:96px;resize:vertical;font-size:13.5px;line-height:1.6;font-family:inherit;font-variant-numeric:tabular-nums;letter-spacing:0}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;align-items:end}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;align-items:start}
 .row2 > div{min-width:0}
 .check{display:flex;gap:9px;align-items:flex-start;color:var(--ink);font-size:13px;margin-top:12px;line-height:1.5}
 .check input{margin-top:3px;accent-color:var(--accent);width:17px;height:17px}
@@ -258,6 +258,35 @@ body[data-stage="pick"] #ifcSample{display:none}
 @media (max-width:560px){.res-kpis{display:grid;grid-template-columns:1fr 1fr;width:100%}}
 .res-kpis dt{font-size:11.5px;color:var(--muted)}
 .res-kpis dd{margin:1px 0 0;font-size:16px;font-weight:700}
+
+/* 필수 표시 */
+.req{display:inline-block;margin-left:4px;font-size:11px;font-weight:700;color:#fff;background:var(--ng);border-radius:6px;padding:1px 6px;vertical-align:1px}
+input.invalid{border-color:var(--ng)!important;box-shadow:0 0 0 3px var(--ng-soft)!important;background:var(--card)}
+.field-err{margin:6px 0 0;font-size:12.5px;font-weight:600;color:var(--ng)}
+/* 고급 입력: 단계별로 숨김 */
+.adv{font-size:11px;font-weight:600;color:var(--muted);background:var(--field);border:1px solid var(--rule);border-radius:6px;padding:1px 6px;margin-left:6px}
+body[data-stage="pick"] #manual,body[data-stage="pick"] #modelCard,body[data-stage="start"] #modelCard{display:none}
+body[data-stage="start"] #manual{background:none;border:0;box-shadow:none;padding:4px 2px}
+body[data-stage="start"] #manual:not([open]) summary{justify-content:center;color:var(--muted);font-weight:500;font-size:13px}
+body[data-stage="start"] #manual:not([open]) summary::after{content:""}
+body[data-stage="start"] #manual:not([open]) summary::before{content:"또는 ";margin-right:3px}
+/* 모델 요약 카드 */
+.mc-title{font-size:15px;font-weight:700;margin:0 0 10px}
+.mc-hero{display:flex;align-items:baseline;gap:6px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--rule)}
+.mc-hero b{font-size:26px;font-weight:700;letter-spacing:-.03em}
+.mc-hero span{font-size:13px;color:var(--muted)}
+.mc-bar{height:8px;border-radius:99px;background:var(--field);overflow:hidden;display:flex;margin:-4px 0 6px}
+.mc-bar i{display:block;height:100%}
+.mc-legend{display:flex;gap:12px;font-size:12px;color:var(--muted);margin-bottom:12px}
+.mc-legend span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:5px;background:currentColor;vertical-align:0}
+.mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}
+.mc-grid div{background:var(--field);border-radius:12px;padding:9px 11px}
+.mc-grid dt{font-size:11.5px;color:var(--muted)}
+.mc-grid dd{margin:1px 0 0;font-size:15px;font-weight:700}
+.mc-grid dd small{font-size:11.5px;font-weight:500;color:var(--muted);margin-left:3px}
+.mc-notes{list-style:none;margin:12px 0 0;padding:12px 0 0;border-top:1px solid var(--rule);display:flex;flex-direction:column;gap:6px}
+.mc-notes li{font-size:12.5px;color:var(--muted);display:flex;gap:7px;line-height:1.45}
+.mc-notes li::before{content:"✓";color:var(--accent);font-weight:700}
 </style>
 </head>
 <body data-stage="start">
@@ -303,15 +332,20 @@ body[data-stage="pick"] #ifcSample{display:none}
       <select id="storey"></select>
     </div>
     <div class="row2">
-      <div><label for="P"><b>1일 최대 타설량</b> (㎥)</label><input id="P" type="number" step="1" min="1" placeholder="예: 120"></div>
+      <div><label for="P"><b>1일 타설량</b> <span class="req">필수</span></label><input id="P" type="number" step="1" min="1" placeholder="㎥ (예: 120)" required aria-required="true" aria-describedby="pErr"><p class="field-err" id="pErr" hidden>하루 최대 타설량을 입력하세요.</p></div>
       <div><label for="N"><b>구역 수</b> (선택)</label><input id="N" type="number" step="1" min="1" placeholder="자동"></div>
     </div>
     <p class="hint" id="nHint">구역 수를 비워 두면 규칙을 지키는 가장 짧은 공기를 자동으로 찾습니다.</p>
     <button type="button" class="primary wide" id="ifcRun">구획하기</button>
   </section>
 
+  <section class="card" id="modelCard" hidden aria-labelledby="mcTitle">
+    <h2 class="mc-title" id="mcTitle">모델 요약</h2>
+    <div id="mcBody"></div>
+  </section>
+
   <details class="more" id="manual">
-    <summary>모델 값 확인·직접 입력</summary>
+    <summary>좌표 직접 입력·편집 <span class="adv">고급</span></summary>
     <p class="form-note" id="formNote">IFC를 올리거나 [예제 불러오기]를 누르면 아래 칸이 채워집니다.</p>
     <fieldset>
     <legend><span class="n">1</span>슬래브</legend>
@@ -991,8 +1025,25 @@ function evaluate(M, z, N, T) {
   return { vol, area, joint, total, bends, maxDev, score, maxVol: Math.max(...vol), minVol: Math.min(...vol) };
 }
 
+
+// 이어진 바닥을 잘라 너무 작은 구역(평균의 10% 미만 또는 1㎥ 미만)을 만든 안인지.
+// 본 바닥과 떨어진 조각(출입구 바닥 등) 하나로 된 구역은 규칙 6상 따로 칠 수밖에 없으므로 작아도 허용한다.
+function hasTinyCut(M, z, vol, T) {
+  const lim = Math.max(1, 0.1 * T);
+  if (Math.min(...vol) >= lim) return false;
+  if (!M._compOf) { M._compOf = new Int32Array(M.units.length); M.comps.forEach((c, i) => { for (const u of c) M._compOf[u] = i; }); }
+  for (let k = 0; k < vol.length; k++) {
+    if (vol[k] >= lim) continue;
+    const comps = new Set(); let n = 0;
+    for (let u = 0; u < z.length; u++) if (z[u] === k) { comps.add(M._compOf[u]); n++; }
+    const whole = comps.size === 1 && M.comps[[...comps][0]].length === n;
+    if (!whole) return true;
+  }
+  return false;
+}
+
 function solve(M, N, P, restarts, seed, deadline) {
-  const rnd = mulberry32(seed || 20261010), T = M.C / N, raw = []; let overP = 0, bentN = 0;
+  const rnd = mulberry32(seed || 20261010), T = M.C / N, raw = []; let overP = 0, bentN = 0, tinyN = 0;
   const stop = deadline || (Date.now() + 4000);
   // (a) 절단선 조합에서 바로 만든 배정
   // (0) 재귀 이등분: 꺾임 없는 안을 빠르게 만든다 (남은 시간의 40%까지)
@@ -1001,6 +1052,7 @@ function solve(M, N, P, restarts, seed, deadline) {
     const ev = evaluate(M, z, N, T);
     if (ev.maxVol > P + 1e-6) { overP++; continue; }
     if (ev.bends.length) { bentN++; continue; }
+    if (hasTinyCut(M, z, ev.vol, T)) { tinyN++; continue; }
     raw.push({ z: Array.from(z), ...ev });
   }
   // 이등분 단계에서 충분히 모였으면 나머지 단계는 생략한다
@@ -1010,6 +1062,7 @@ function solve(M, N, P, restarts, seed, deadline) {
     const ev = evaluate(M, z, N, T);
     if (ev.maxVol > P + 1e-6) { overP++; continue; }
     if (ev.bends.length) { bentN++; continue; }
+    if (hasTinyCut(M, z, ev.vol, T)) { tinyN++; continue; }
     raw.push({ z: Array.from(z), ...ev });
   }
   // (b) 씨앗 확장 + 보정 — 선 조합으로 이미 충분하면 적게, 큰 모델이면 횟수를 줄인다
@@ -1029,7 +1082,8 @@ function solve(M, N, P, restarts, seed, deadline) {
     improve(M.units, z, N, P, T, (u, B) => bendDelta(M, z, u, B) <= 0);
     const ev = evaluate(M, z, N, T);
     if (ev.maxVol > P + 1e-6) { overP++; continue; }
-    if (ev.bends.length) { bentN++; continue; } // 규칙 3 위반 → 후보에서 제외
+    if (ev.bends.length) { bentN++; continue; }
+    if (hasTinyCut(M, z, ev.vol, T)) { tinyN++; continue; } // 규칙 3 위반 → 후보에서 제외
     raw.push({ z: Array.from(z), ...ev });
   }
   // 구역 번호만 다른 같은 배정 제거 → 점수순
@@ -1040,7 +1094,7 @@ function solve(M, N, P, restarts, seed, deadline) {
     if (!seen.has(key)) { seen.add(key); s.N = N; s.T = T; uniq.push(s); }
   }
   uniq.sort((a, b) => a.score - b.score);
-  return { sols: uniq, tried: restarts, found: raw.length, overP, bentN, T };
+  return { sols: uniq, tried: restarts, found: raw.length, overP, bentN, tinyN, T };
 }
 
 
@@ -1206,13 +1260,13 @@ function recommend(M, N, P, restarts, want, timeMs) {
   const pairs = [];
   M.units.forEach((u, i) => { for (const [v] of u.nb) if (i < v) pairs.push([i, v]); });
   const diff = (a, b) => { let d = 0; for (const [i, v] of pairs) if ((a.z[i] === a.z[v]) !== (b.z[i] === b.z[v])) d++; return d; };
-  let pool = [], overP = 0, bentN = 0, found = 0, tried = 0;
+  let pool = [], overP = 0, bentN = 0, tinyN = 0, found = 0, tried = 0;
   const seen = new Set();
   const stop = Date.now() + (timeMs > 0 ? timeMs : 10000);
   for (let round = 0; round < 4; round++) {
     if (Date.now() > stop) break;
     const R = solve(M, N, P, restarts, 20261010 + N + round * 977, stop);
-    overP += R.overP; bentN += R.bentN; found += R.found; tried += R.tried;
+    overP += R.overP; bentN += R.bentN; tinyN += R.tinyN || 0; found += R.found; tried += R.tried;
     for (const s of R.sols) {
       const map = new Map();
       const key = s.z.map(k => { if (!map.has(k)) map.set(k, map.size); return map.get(k); }).join(',');
@@ -1234,7 +1288,7 @@ function recommend(M, N, P, restarts, want, timeMs) {
   }
   picked.forEach(s => { s.tags = s.tags || []; });
   const timedOut = Date.now() >= stop - 50 && picked.length < want;
-  return { sols: picked, T: M.C / N, tried, overP, bentN, found, timedOut };
+  return { sols: picked, T: M.C / N, tried, overP, bentN, tinyN, found, timedOut };
 }
 // ===== CORE-END =====
 // ===== IFC-START : Revit에서 내보낸 IFC 읽기 (외부 라이브러리 없이 직접 해석) =====
@@ -1751,7 +1805,7 @@ const IFCReader = (() => {
       const uniqOpen = [];
       for (const o of openings) if (!uniqOpen.some(q => q.every((v, i) => Math.abs(v - o[i]) < 0.02))) uniqOpen.push(o);
       openings.length = 0; openings.push(...uniqOpen);
-      let poly = polys[0], slabRings = [polys[0]];
+      let poly = polys[0], slabRings = [polys[0]], dropRatio = 0;
       if (polys.length > 1) {
         const u = outlineFromFaces(polys.map(r => [r.map(p => [p[0], p[1], 0])]), 0, 1e-6);
         if (u) {
@@ -1766,8 +1820,16 @@ const IFCReader = (() => {
             if (host) { const xs = r.map(p => p[0]), ys = r.map(p => p[1]); openings.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]); }
             else outers.push(r);
           }
-          poly = outers[0]; slabRings = outers;
-          if (outers.length > 1) W.push(`이 층 바닥이 서로 떨어진 ${outers.length}덩어리로 되어 있습니다.`);
+          // 본 바닥과 떨어진 아주 작은 조각(문턱·점검구 바닥 같은 모델 조각)은 구획 대상에서 뺀다
+          const totA = outers.reduce((a, r) => a + areaR(r), 0);
+          const keep = outers.filter((r, i) => i === 0 || areaR(r) >= Math.max(10, 0.02 * totA));
+          const dropA = totA - keep.reduce((a, r) => a + areaR(r), 0);
+          if (keep.length < outers.length) {
+            W.push(`본 바닥과 떨어진 작은 슬래브 조각 ${outers.length - keep.length}개(합계 ${dropA.toFixed(1)} ㎡)는 구획에서 제외했습니다.`);
+            dropRatio = dropA / totA;
+          }
+          poly = keep[0]; slabRings = keep;
+          if (keep.length > 1) W.push(`이 층 바닥이 서로 떨어진 ${keep.length}덩어리로 되어 있습니다.`);
         } else {
           // 슬래브끼리 겹쳐 있으면 외곽을 한 줄로 합칠 수 없다. 계산은 셀 단위 합집합으로 하므로 모두 그대로 넘긴다
           slabRings = polys.slice();
@@ -1778,6 +1840,7 @@ const IFCReader = (() => {
       const bx = [Math.min(...allP.map(p => p[0])) - 1, Math.min(...allP.map(p => p[1])) - 1, Math.max(...allP.map(p => p[0])) + 1, Math.max(...allP.map(p => p[1])) + 1];
       const inBox = g => g.max[0] > bx[0] && g.min[0] < bx[2] && g.max[1] > bx[1] && g.min[1] < bx[3];
       let slabVol = parts.reduce((v, x) => v + x.sh.vol, 0);
+      if (dropRatio > 0) slabVol *= (1 - dropRatio);
 
       // 2) 기둥: 슬래브 높이에 걸치는 기둥 (아래층 기둥 상단 / 위층 기둥 하단)
       const columns = [];
@@ -1937,7 +2000,15 @@ function showMsgs(list) {
   $('#msgs').innerHTML = list.map(([k, t]) => `<div class="msg ${k}"><span class="tag">${MSG_TAG[k] || '안내'}</span><p>${t}</p></div>`).join('');
 }
 
+function requireP() {
+  const el = $('#P');
+  if (num('P') > 0) { el.classList.remove('invalid'); $('#pErr').hidden = true; return true; }
+  el.classList.add('invalid'); $('#pErr').hidden = false;
+  el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  return false;
+}
 function run() {
+  if (!requireP()) return;
   const btn = $('#run'), btn2 = $('#ifcRun'); btn.dataset.label = btn.dataset.label || btn.textContent; btn2.dataset.label = btn2.dataset.label || btn2.textContent; btn.disabled = true; btn2.disabled = true; btn.textContent = btn2.textContent = num('N') > 0 ? '계산 중…' : '가장 빠른 계획 찾는 중…';
   setTimeout(() => {
     try { compute(); } catch (e) { $('#empty').hidden = true; $('#out').hidden = false; showMsgs([['err', '계산 중 오류: ' + esc(e.message)]]); console.error(e); }
@@ -1989,6 +2060,7 @@ function compute() {
       state.fail = true;
       const why = [];
       if (R.overP) why.push(`${R.overP}개는 하루 한도(${inp.P} ㎥)를 넘었고`);
+      if (R.tinyN) why.push(`${R.tinyN}개는 너무 작은 구역(평균의 10% 미만)이 생겨 제외됐고`);
       if (R.bentN) why.push(`${R.bentN}개는 경계가 보·기둥이 아닌 곳에서 꺾였습니다(규칙 3)`);
       const whyTxt = why.length ? ` 검토한 안 가운데 ${why.join(', ')}.` : '';
       const more = R.timedOut ? ` <button type="button" class="inline-btn" data-time="40000">더 오래 찾기 (최대 40초)</button>` : '';
@@ -2039,7 +2111,41 @@ function renderHead() {
   const I = state.ifcInfo;
   const short = w => w.replace(/모델이 X·Y축에서 (-?[\d.]+)° 돌아가 있어.*/, '$1° 회전 보정').replace(/이 층의 슬래브 (\d+)개를 한 바닥으로 합쳐 계산했습니다\./, '슬래브 $1개 합침').replace(/두께 ([\d.]+) m 미만인 칸막이벽 (\d+)개는 제외했습니다.*/, '칸막이벽 $2개 제외').replace(/높이가 다른 슬래브 (\d+)개.*/, '높이 다른 슬래브 $1개 제외');
   const chips = I ? [`기둥 ${I.cols}`, `보 ${I.beams}`, `구조벽 ${I.walls}`, `개구부 ${I.open}`].concat((I.W || []).map(short).filter(w => w.length < 24)) : [];
-  $('#resHead').innerHTML = `<div class="rt"><small>${esc(inp.project || '프로젝트')} · ${esc(inp.floor || '층')}</small><h2>${title}</h2>${chips.length ? `<div class="res-info">${chips.map(c => `<span>${esc(c)}</span>`).join('')}</div>` : ''}</div><dl class="res-kpis">${kpi.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('')}</dl>`;
+  $('#resHead').innerHTML = `<div class="rt"><small>${esc(inp.project || '프로젝트')} · ${esc(inp.floor || '층')}</small><h2>${title}</h2></div><dl class="res-kpis">${kpi.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('')}</dl>`;
+}
+function renderModelCard() {
+  const M = state.M, inp = state.inp; if (!M || !inp) { $('#modelCard').hidden = true; return; }
+  const I = state.ifcInfo;
+  const cols = I ? I.cols : (inp.columns || []).length, beams = I ? I.beams : (inp.beams || []).length;
+  const walls = I ? I.walls : (inp.walls || []).length, open = I ? I.open : (inp.openings || []).length;
+  let bar = '';
+  if (I && I.slabVol + I.beamVol > 0) {
+    const a = I.slabVol / (I.slabVol + I.beamVol) * 100;
+    bar = `<div class="mc-bar"><i style="width:${a}%;background:var(--accent)"></i><i style="width:${100 - a}%;background:var(--beam)"></i></div>
+      <div class="mc-legend"><span style="color:var(--accent)">슬래브 ${f1(I.slabVol)} ㎥</span><span style="color:var(--beam)">슬래브 아래 보 ${f1(I.beamVol)} ㎥</span></div>`;
+  }
+  const notes = [];
+  for (const w of (I && I.W) || []) {
+    let m;
+    if ((m = w.match(/X·Y축에서 (-?[\d.]+)°/))) notes.push(`건물이 ${Math.abs(+m[1])}° 돌아가 있어 그리드에 맞게 보정`);
+    else if ((m = w.match(/슬래브 (\d+)개를 한 바닥으로/))) notes.push(`바닥 슬래브 ${m[1]}개를 한 층 바닥으로 합침`);
+    else if ((m = w.match(/칸막이벽 (\d+)개/))) notes.push(`얇은 칸막이벽 ${m[1]}개는 제외, 구조벽만 반영`);
+    else if ((m = w.match(/높이가 다른 슬래브 (\d+)개/))) notes.push(`높이가 다른 슬래브 ${m[1]}개(계단참 등) 제외`);
+    else if ((m = w.match(/사선·곡선 (보|벽) (\d+)개/))) notes.push(`사선·곡선 ${m[1]} ${m[2]}개 제외`);
+    else if ((m = w.match(/작은 슬래브 조각 (\d+)개\(합계 ([\d.]+) ㎡\)/))) notes.push(`떨어진 작은 조각 ${m[1]}개(${m[2]} ㎡)는 구획에서 제외`);
+  }
+  for (const w of M.W) { const m = w.match(/구간 (\d+)곳은 큰보가 있다고 가정/); if (m) notes.push(`보가 빠진 기둥 사이 ${m[1]}곳은 큰보로 가정`); }
+  $('#mcBody').innerHTML = `
+    <div class="mc-hero"><b>${f1(M.C)}</b><span>㎥ · 이 층 콘크리트 총량</span></div>${bar}
+    <dl class="mc-grid">
+      <div><dt>슬래브 면적</dt><dd>${Math.round(M.totalArea).toLocaleString()}<small>㎡</small></dd></div>
+      <div><dt>슬래브 두께</dt><dd>${Math.round(inp.t * 1000)}<small>mm</small></dd></div>
+      <div><dt>기둥</dt><dd>${cols}<small>개</small></dd></div>
+      <div><dt>보</dt><dd>${beams}<small>개</small></dd></div>
+      <div><dt>구조벽</dt><dd>${walls}<small>개</small></dd></div>
+      <div><dt>개구부</dt><dd>${open}<small>개</small></dd></div>
+    </dl>${notes.length ? `<ul class="mc-notes">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}`;
+  $('#modelCard').hidden = false;
 }
 function renderAll(fresh) {
   const M = state.M; if (!M) return;
@@ -2084,6 +2190,7 @@ function renderAll(fresh) {
   $('#detailTitle').hidden = !sol;
   renderBasis(M);
   renderHead();
+  renderModelCard();
   $('#exportText').value = csvText();
 }
 
@@ -2307,6 +2414,7 @@ function download(name, text, type) {
 }
 
 $('#run').addEventListener('click', run);
+$('#P').addEventListener('input', () => { if (num('P') > 0) { $('#P').classList.remove('invalid'); $('#pErr').hidden = true; } });
 $('#msgs').addEventListener('click', e => { const b = e.target.closest('.inline-btn'); if (!b) return; if (b.dataset.time) state.searchTime = +b.dataset.time; else $('#N').value = b.dataset.n; run(); });
 $('#example').addEventListener('click', () => { state.ifcInfo = null; fill(EXAMPLE); $('#formNote').textContent = '예제 값(가상의 보 구조 건물)입니다.'; run(); });
 document.querySelectorAll('[data-layer]').forEach(c => c.addEventListener('change', () => renderAll(false)));
@@ -2355,7 +2463,7 @@ function loadIFCText(text, name) {
       const best = cand.slice().sort((a, b) => (b.count.beam - a.count.beam) || (b.elev - a.elev))[0];
       sel.value = best.id;
       $('#ifcPick').hidden = false;
-      $('#fileName').textContent = name; $('#fileChip').hidden = false;
+      $('#fileName').textContent = name; $('#fileChip').hidden = false; $('#modelCard').hidden = true; state.ifcInfo = null;
       setStage('pick');
       clearModelFields(`${name} — 층을 고르고 [이 층 구획하기]를 누르면 여기에 채워집니다.`);
       ifcStatus(`객체 ${IFCM.count.toLocaleString()}개, 층 ${IFCM.storeys.length}개를 읽었습니다. 아래에서 층을 고르세요.`, 'ok');
@@ -2392,18 +2500,14 @@ const drop = $('#drop');
 drop.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
 $('#ifcSample').addEventListener('click', () => { if (!(num('P') > 0)) { $('#P').value = 35; } loadIFCText(SAMPLE_IFC, '예제_RC_업무시설.ifc'); });
 $('#ifcRun').addEventListener('click', () => {
+  if (!requireP()) return;
   if (!IFCM || $('#ifcPick').hidden) { run(); return; }
   try {
     const r = IFCM.extract(+$('#storey').value, { minWallT: num('minWallT') > 0 ? num('minWallT') : 0.2 });
-    state.ifcInfo = { cols: r.columns.length, beams: r.beams.length, walls: r.walls.length, open: r.openings.length, W: r.W };
+    state.ifcInfo = { cols: r.columns.length, beams: r.beams.length, walls: r.walls.length, open: r.openings.length, W: r.W, slabVol: r.info.slabVol, beamVol: r.info.beamVol };
     fill({ project: r.project, floor: r.floor, slab: r.slab, slabs: r.slabs, t: r.t, C: r.C, columns: r.columns, beams: r.beams, walls: r.walls, openings: r.openings });
     ifcStatus(`${esc(r.floor)}: 기둥 ${r.columns.length}, 보 ${r.beams.length}, 벽 ${r.walls.length}, 개구부 ${r.openings.length}개를 찾았습니다. 타설량 ${f1(r.info.slabVol)}(슬래브) + ${f1(r.info.beamVol)}(슬래브 아래 보) = ${f1(r.C)} ㎥.` + (r.W.length ? '<br>' + r.W.map(esc).join('<br>') : ''), 'ok');
     $('#formNote').textContent = `${r.floor} 모델 값을 불러왔습니다.`;
-    if (!(num('P') > 0)) {
-      ifcStatus(esc(r.floor) + ' 모델 값을 불러왔습니다. <b>1일 최대 타설량 P</b>를 입력한 뒤 [구획 나누기]를 누르세요.', 'err');
-      $('#P').focus(); $('#P').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
     run();
   } catch (e) { ifcStatus(esc(e.message), 'err'); }
 });
