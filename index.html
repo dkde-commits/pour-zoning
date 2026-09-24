@@ -125,6 +125,7 @@ button.link:hover{background:none;text-decoration:underline}
 .layers label{display:inline-flex;gap:7px;align-items:center;margin:0;padding:8px 14px;border-radius:999px;background:var(--card);border:1px solid var(--rule);font-size:13px;color:var(--ink);cursor:pointer;font-weight:500;transition:background .12s,border-color .12s}
 .layers label:has(input:checked){background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent);font-weight:700}
 .layers label.off{opacity:.4;cursor:not-allowed}
+.layer-note{align-self:center;font-size:12.5px;color:var(--muted)}
 .layers input{accent-color:var(--accent);width:15px;height:15px}
 
 /* 도면 */
@@ -329,6 +330,7 @@ h3{font-size:16px;font-weight:700;margin:2px 0 4px}
       <label><input type="checkbox" data-layer="cand">절단 가능 위치</label>
       <label><input type="checkbox" data-layer="units">최소 타설 단위</label>
       <label><input type="checkbox" data-layer="struct" checked>보·기둥</label>
+      <span class="layer-note" id="layerNote"></span>
     </div>
     <div class="sheet" id="sheet">
       <div class="zoomwrap">
@@ -896,14 +898,25 @@ function solve(M, N, P, restarts, seed, deadline) {
   const rnd = mulberry32(seed || 20261010), T = M.C / N, raw = []; let overP = 0, bentN = 0;
   const stop = deadline || (Date.now() + 4000);
   // (a) 절단선 조합에서 바로 만든 배정
-  for (const z of lineCandidates(M, N, P, rnd, 120, stop)) {
+  // (0) 재귀 이등분: 꺾임 없는 안을 빠르게 만든다 (남은 시간의 40%까지)
+  const gStop = Math.min(stop, Date.now() + Math.max(400, (stop - Date.now()) * 0.4));
+  for (const z of guillotine(M, N, P, rnd, 400, gStop)) {
+    const ev = evaluate(M, z, N, T);
+    if (ev.maxVol > P + 1e-6) { overP++; continue; }
+    if (ev.bends.length) { bentN++; continue; }
+    raw.push({ z: Array.from(z), ...ev });
+  }
+  // 이등분 단계에서 충분히 모였으면 나머지 단계는 생략한다
+  const enough = raw.length >= 30;
+  const lineStop = enough ? Date.now() : Math.min(stop, Date.now() + Math.max(500, (stop - Date.now()) * 0.6));
+  for (const z of lineCandidates(M, N, P, rnd, 120, lineStop)) {
     const ev = evaluate(M, z, N, T);
     if (ev.maxVol > P + 1e-6) { overP++; continue; }
     if (ev.bends.length) { bentN++; continue; }
     raw.push({ z: Array.from(z), ...ev });
   }
   // (b) 씨앗 확장 + 보정 — 선 조합으로 이미 충분하면 적게, 큰 모델이면 횟수를 줄인다
-  const budget = raw.length >= 12 ? Math.min(restarts, 20) : Math.max(15, Math.min(restarts, Math.round(6000 / Math.max(10, M.units.length))));
+  const budget = enough ? 0 : raw.length >= 12 ? Math.min(restarts, 20) : Math.max(15, Math.min(restarts, Math.round(6000 / Math.max(10, M.units.length))));
   for (let r = 0; r < budget; r++) {
     if (Date.now() > stop) break;
     const seeds = pickSeeds(M, N, rnd); if (!seeds) break;
@@ -959,6 +972,80 @@ function blocksFromLines(M, S) {
   }
   return { blocks, blockOf };
 }
+
+// 재귀 이등분(길로틴) 생성기: 영역을 곧은 절단선 하나로 끝까지 갈라 두 영역으로 나누고, 각 영역을 다시 가른다.
+// 새 선은 항상 기존 경계에 닿아 끝나므로(T자) 슬래브 한가운데서 꺾이는 경계가 생기지 않는다(규칙 3을 구조적으로 만족).
+function guillotine(M, N, P, rnd, tries, stop) {
+  const U = M.units, out = [], seenKey = new Set();
+  const volOf = reg => { let v = 0; for (const u of reg) v += U[u].vol; return v; };
+  const comps = (reg, set, line) => {
+    const lab = new Map(); let c = 0;
+    for (const s0 of reg) {
+      if (lab.has(s0)) continue;
+      lab.set(s0, c); const st = [s0];
+      while (st.length) { const u = st.pop(); for (const [v, ids] of U[u].nbl) { if (!set.has(v) || lab.has(v) || ids.has(line)) continue; lab.set(v, c); st.push(v); } }
+      c++;
+      if (c > 2) break;
+    }
+    return { c, lab };
+  };
+  function rec(reg, n, z, next, depth) {
+    const vol = volOf(reg);
+    if (n === 1) { if (vol > P + 1e-6) return -1; for (const u of reg) z[u] = next; return next + 1; }
+    if (vol > n * P + 1e-6 || reg.length < n) return -1;
+    const set = new Set(reg), lines = new Set();
+    for (const u of reg) for (const [v, ids] of U[u].nbl) if (set.has(v)) for (const id of ids) lines.add(id);
+    const opts = [];
+    for (const line of lines) {
+      const { c, lab } = comps(reg, set, line); if (c !== 2) continue;
+      const A = [], B = []; for (const u of reg) (lab.get(u) === 0 ? A : B).push(u);
+      const vA = volOf(A), vB = vol - vA;
+      const base = Math.round(n * vA / vol);
+      for (const nA of new Set([base, base - 1, base + 1])) {
+        if (nA < 1 || nA > n - 1) continue;
+        const nB = n - nA;
+        if (vA > nA * P + 1e-6 || vB > nB * P + 1e-6 || A.length < nA || B.length < nB) continue;
+        opts.push({ A, B, nA, nB, sc: Math.abs(vA / nA - vB / nB) / (vol / n) });
+      }
+    }
+    if (!opts.length) return -1;
+    opts.sort((a, b) => a.sc - b.sc);
+    const top = Math.min(opts.length, 5);
+    const order = []; for (let i = 0; i < top; i++) order.push(i);
+    for (let i = order.length - 1; i > 0; i--) { if (rnd() < 0.6) { const j = Math.floor(rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; } }
+    for (const oi of order.slice(0, 3)) {
+      if (stop && Date.now() > stop) return -1;
+      const o = opts[oi], snap = Array.from(z);
+      const k = rec(o.A, o.nA, z, next, depth + 1);
+      if (k >= 0) { const k2 = rec(o.B, o.nB, z, k, depth + 1); if (k2 >= 0) return k2; }
+      for (let i = 0; i < z.length; i++) z[i] = snap[i];
+    }
+    return -1;
+  }
+  for (let t = 0; t < tries && out.length < 60; t++) {
+    if (stop && Date.now() > stop) break;
+    for (const comp of M.comps) {
+      // 떨어진 덩어리가 여러 개면 물량 비례로 구역 수를 나눠 준다
+      if (M.comps.length > 1) break;
+    }
+    const z = new Array(U.length).fill(-1);
+    let ok = true, next = 0;
+    if (M.comps.length === 1) { next = rec(M.comps[0].slice(), N, z, 0, 0); ok = next === N; }
+    else {
+      const tot = M.C; let left = N; const cs = M.comps.slice().sort((a, b) => volOf(b) - volOf(a));
+      for (let i = 0; i < cs.length && ok; i++) {
+        const n = i === cs.length - 1 ? left : Math.max(1, Math.min(left - (cs.length - 1 - i), Math.round(N * volOf(cs[i]) / tot)));
+        const k = rec(cs[i].slice(), n, z, next, 0); if (k < 0) ok = false; else { next = k; left -= n; }
+      }
+      ok = ok && next === N;
+    }
+    if (!ok || z.some(v => v < 0)) continue;
+    const key = z.join(',');
+    if (seenKey.has(key)) continue; seenKey.add(key); out.push(z);
+  }
+  return out;
+}
+
 function lineCandidates(M, N, P, rnd, limit, stop) {
   const L = M.lines.length, out = [], seen = new Set();
   if (!L) return out;
@@ -967,7 +1054,7 @@ function lineCandidates(M, N, P, rnd, limit, stop) {
     const key = arr.slice().sort((p, q) => p - q).join(',');
     if (seen.has(key)) return; seen.add(key);
     const S = new Set(arr), { blocks, blockOf } = blocksFromLines(M, S);
-    if (blocks.length < N || blocks.length > N + 6) return;
+    if (blocks.length < N || blocks.length > Math.max(N + 6, 3 * N)) return;
     const zs = [];
     if (blocks.length === N) zs.push(Array.from(blockOf));
     else {
@@ -989,7 +1076,7 @@ function lineCandidates(M, N, P, rnd, limit, stop) {
   // 선 1~2개 조합은 전부, 그 이상은 무작위 표본
   for (let i = 0; i < L; i++) tryS([i]);
   for (let i = 0; i < L; i++) for (let j = i + 1; j < L; j++) tryS([i, j]);
-  const kMin = Math.max(1, Math.min(L, N - 1)), kMax = Math.min(L, N + 6);
+  const kMin = Math.max(1, Math.min(L, Math.floor(2 * Math.sqrt(N)) - 2)), kMax = Math.min(L, N + 4);
   for (let t = 0; t < limit * 80 && out.length < limit; t++) {
     if (stop && Date.now() > stop) break;
     const k = kMin + Math.floor(rnd() * (kMax - kMin + 1));
@@ -1017,14 +1104,14 @@ function pickSeedsG(items, N, rnd) {
 }
 
 // 타설 방법 후보 추천: 사용자가 정한 N구역 안에서, 규칙을 모두 지키면서 서로 충분히 다른 배정을 want개까지
-function recommend(M, N, P, restarts, want) {
+function recommend(M, N, P, restarts, want, timeMs) {
   want = want || 10;
   const pairs = [];
   M.units.forEach((u, i) => { for (const [v] of u.nb) if (i < v) pairs.push([i, v]); });
   const diff = (a, b) => { let d = 0; for (const [i, v] of pairs) if ((a.z[i] === a.z[v]) !== (b.z[i] === b.z[v])) d++; return d; };
   let pool = [], overP = 0, bentN = 0, found = 0, tried = 0;
   const seen = new Set();
-  const stop = Date.now() + 7000;
+  const stop = Date.now() + (timeMs > 0 ? timeMs : 10000);
   for (let round = 0; round < 4; round++) {
     if (Date.now() > stop) break;
     const R = solve(M, N, P, restarts, 20261010 + N + round * 977, stop);
@@ -1049,7 +1136,8 @@ function recommend(M, N, P, restarts, want) {
     tag(s => s.total + 1e-3 * s.maxDev, '이음 최소');
   }
   picked.forEach(s => { s.tags = s.tags || []; });
-  return { sols: picked, T: M.C / N, tried, overP, bentN, found };
+  const timedOut = Date.now() >= stop - 50 && picked.length < want;
+  return { sols: picked, T: M.C / N, tried, overP, bentN, found, timedOut };
 }
 // ===== CORE-END =====
 // ===== IFC-START : Revit에서 내보낸 IFC 읽기 (외부 라이브러리 없이 직접 해석) =====
@@ -1753,7 +1841,7 @@ function showMsgs(list) {
 }
 
 function run() {
-  const btn = $('#run'); btn.disabled = true; btn.textContent = '계산 중…';
+  const btn = $('#run'); btn.disabled = true; btn.textContent = state.searchTime ? `계산 중… (최대 ${state.searchTime / 1000}초)` : '계산 중… (최대 10초)';
   setTimeout(() => {
     try { compute(); } catch (e) { $('#empty').hidden = true; $('#out').hidden = false; showMsgs([['err', '계산 중 오류: ' + esc(e.message)]]); console.error(e); }
     btn.disabled = false; btn.textContent = '구획 나누기';
@@ -1784,7 +1872,8 @@ function compute() {
     state.fail = true;
     msgs.unshift(['err', `벽·개구부로 완전히 떨어진 덩어리가 ${M.comps.length}개라 최소 ${M.comps.length}구역이 필요합니다.`]);
   } else {
-    const R = recommend(M, N, inp.P, inp.restarts, 10);
+    const tm = state.searchTime || 10000; state.searchTime = 0;
+    const R = recommend(M, N, inp.P, inp.restarts, 10, tm);
     state.Rinfo = R;
     if (!R.sols.length) {
       state.fail = true;
@@ -1792,18 +1881,30 @@ function compute() {
       if (R.overP) why.push(`${R.overP}개는 하루 한도(${inp.P} ㎥)를 넘었고`);
       if (R.bentN) why.push(`${R.bentN}개는 경계가 보·기둥이 아닌 곳에서 꺾였습니다(규칙 3)`);
       const whyTxt = why.length ? ` 검토한 안 가운데 ${why.join(', ')}.` : '';
-      msgs.unshift(['err', `${N}구역으로는 규칙을 모두 지키는 구획안을 찾지 못했습니다.${whyTxt} 구역 수를 늘리면 선택지가 넓어집니다. <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
+      const more = R.timedOut ? ` <button type="button" class="inline-btn" data-time="40000">더 오래 찾기 (최대 40초)</button>` : '';
+      const lead = R.timedOut ? `제한 시간(${tm / 1000}초) 안에 ${N}구역으로 규칙을 모두 지키는 구획안을 찾지 못했습니다. 층이 커서 모든 경우를 확인하지 못한 것이라, 시간을 더 주면 나올 수 있습니다.` : `${N}구역으로는 규칙을 모두 지키는 구획안을 찾지 못했습니다.${whyTxt}`;
+      msgs.unshift(['err', `${lead} 구역 수를 늘려도 선택지가 넓어집니다.${more} <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
     } else {
       state.R = R;
       const s = R.sols[0];
       msgs.unshift(['ok', `${N}구역(${N}일) 기준으로 구획안 ${R.sols.length}개를 찾았습니다. 추천안은 가장 큰 구역이 ${f1(s.maxVol)} ㎥(하루 한도 ${inp.P} ㎥)이고, 구역 간 물량 차이는 최대 ${(s.maxDev * 100).toFixed(1)}%입니다.`]);
-      if (R.sols.length < 10) msgs.push(['warn', `이 조건에서는 규칙을 모두 지키는 구획안이 ${R.sols.length}개뿐이라, ${R.sols.length === 1 ? '그 1개만' : `가능한 ${R.sols.length}개를 모두`} 보여드립니다. 구역 수를 늘리면 선택지가 넓어집니다. <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
+      if (R.sols.length < 10) msgs.push(['warn', R.timedOut
+        ? `제한 시간(${tm / 1000}초) 안에 찾은 구획안이 ${R.sols.length}개입니다. 층이 커서 모든 경우를 확인하지는 못했으니, 시간을 더 주면 더 나올 수 있습니다. <button type="button" class="inline-btn" data-time="40000">더 오래 찾기 (최대 40초)</button> <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`
+        : `이 조건에서는 규칙을 모두 지키는 구획안이 ${R.sols.length}개뿐이라, ${R.sols.length === 1 ? '그 1개만' : `가능한 ${R.sols.length}개를 모두`} 보여드립니다. 구역 수를 늘리면 선택지가 넓어집니다. <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
     }
   }
   if (!M.Cgiven) msgs.push(['warn', `총 타설량 C를 비워 슬래브 면적 × 두께(${f1(M.totalArea)} ㎡ × ${inp.t} m = ${f1(M.C)} ㎥)로 계산했습니다. 보 물량은 빠져 있습니다.`]);
   showMsgs(msgs);
   $('#sheet').hidden = false;
-  if (state.fail) { document.querySelector('[data-layer=units]').checked = true; document.querySelector('[data-layer=cand]').checked = true; }
+  // 실패하면 원인을 볼 수 있게 절단 위치·최소 타설 단위를 켜 주고, 다시 성공하면 자동으로 켰던 것만 끈다
+  const lu = document.querySelector('[data-layer=units]'), lc = document.querySelector('[data-layer=cand]');
+  if (state.fail) {
+    if (!lu.checked) { lu.checked = true; state.autoOn = (state.autoOn || []).concat('units'); }
+    if (!lc.checked) { lc.checked = true; state.autoOn = (state.autoOn || []).concat('cand'); }
+  } else if (state.autoOn && state.autoOn.length) {
+    for (const k of state.autoOn) document.querySelector(`[data-layer=${k}]`).checked = false;
+    state.autoOn = [];
+  }
   renderAll(true);
   if (window.matchMedia('(max-width:920px)').matches) $('#result').scrollIntoView({ behavior: 'smooth' });
 }
@@ -1818,6 +1919,7 @@ function renderAll(fresh) {
   const zchk = document.querySelector('[data-layer=zones]');
   zchk.disabled = !sol; zchk.closest('label').classList.toggle('off', !sol);
   zchk.closest('label').title = sol ? '' : '구획 결과가 나왔을 때만 켤 수 있습니다';
+  $('#layerNote').textContent = sol ? '' : '구획안이 없어 구획 표시는 꺼져 있습니다. 위 안내에 따라 조건을 바꿔 다시 계산해 보세요.';
   const sh = $('#sheet'); if (fresh) { sh.classList.remove('fresh'); void sh.offsetWidth; sh.classList.add('fresh'); }
   $('#legend').innerHTML = [
     ['var(--girder)', '큰보'], ['var(--beam)', '작은보'], ['var(--wall)', '벽·코어'],
@@ -1838,7 +1940,7 @@ function renderAll(fresh) {
     $('#zoneTable').innerHTML = `<thead><tr><th>구역</th><th>타설량 (㎥)</th><th>면적 (㎡)</th><th>한도 대비</th><th>구역 둘레 이음 (m)</th></tr></thead><tbody>` +
       sol.vol.map((v, k) => `<tr><td><span class="sw" style="background:${zColor(k)}"></span>C${k + 1}</td><td>${f1(v)}</td><td>${f1(sol.area[k])}</td><td class="${v > inp.P ? 'over' : ''}">${(v / inp.P * 100).toFixed(0)}%</td><td>${f1(sol.joint[k])}</td></tr>`).join('') +
       `<tr><td><b>합계</b></td><td><b>${f1(sol.vol.reduce((a, b) => a + b, 0))}</b></td><td>${f1(M.totalArea)}</td><td></td><td>${f1(sol.total)} <small>(중복 제외)</small></td></tr></tbody>`;
-    $('#candCount').textContent = state.R.sols.length < 10 ? `${state.R.sols.length}개 (가능한 안 전부)` : '10개';
+    $('#candCount').textContent = state.R.sols.length < 10 ? (state.Rinfo && state.Rinfo.timedOut ? `${state.R.sols.length}개 (제한 시간 내)` : `${state.R.sols.length}개 (가능한 안 전부)`) : '10개';
     $('#cands').innerHTML = state.R.sols.map((s, i) => `<button type="button" class="cand" data-i="${i}" aria-pressed="${i === state.sel}">
         <span class="ct">후보 ${i + 1}${i === 0 ? ' <small>추천</small>' : ''}<small>${s.N}구역</small></span>
         ${drawMini(M, s)}
@@ -2074,7 +2176,7 @@ function download(name, text, type) {
 }
 
 $('#run').addEventListener('click', run);
-$('#msgs').addEventListener('click', e => { const b = e.target.closest('.inline-btn'); if (!b) return; $('#N').value = b.dataset.n; run(); });
+$('#msgs').addEventListener('click', e => { const b = e.target.closest('.inline-btn'); if (!b) return; if (b.dataset.time) state.searchTime = +b.dataset.time; else $('#N').value = b.dataset.n; run(); });
 $('#example').addEventListener('click', () => { fill(EXAMPLE); run(); });
 document.querySelectorAll('[data-layer]').forEach(c => c.addEventListener('change', () => renderAll(false)));
 $('#cands').addEventListener('click', e => {
