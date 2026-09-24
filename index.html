@@ -38,11 +38,11 @@ body{margin:0;background:var(--paper);color:var(--ink);font-size:15px;line-heigh
 h1,h2,h3{margin:0;line-height:1.3;letter-spacing:-.02em}
 
 /* 상단 바 */
-.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--sheet) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);
+.top{position:relative;background:var(--sheet);border-bottom:1px solid var(--rule);
   padding:calc(14px + env(safe-area-inset-top,0px)) clamp(16px,4vw,32px) 14px;display:flex;gap:10px 24px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .top h1{font-size:19px;font-weight:700;display:flex;align-items:center;gap:8px}
 .top h1::before{content:"";width:22px;height:22px;border-radius:7px;background:var(--accent);box-shadow:inset 0 0 0 3px var(--sheet), 0 0 0 1px var(--accent)}
-.top p{margin:3px 0 0;color:var(--muted);font-size:13px;max-width:62ch}
+.top p{margin:3px 0 0;color:var(--muted);font-size:13px;max-width:90ch}
 .spec{font-size:12px;color:var(--muted);background:var(--field);border-radius:999px;padding:5px 12px}
 
 @media (max-width:640px){.top{padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px}.top p,.spec{display:none}}
@@ -53,16 +53,19 @@ h1,h2,h3{margin:0;line-height:1.3;letter-spacing:-.02em}
 
 /* 카드 */
 fieldset,.upload,.sheet,#zoneBlock,#altBlock,.exportcard{background:var(--card);border:1px solid var(--rule);border-radius:16px;box-shadow:var(--shadow)}
-fieldset{border:1px solid var(--rule);margin:0;padding:16px 16px 18px}
-legend{font-weight:700;font-size:15px;padding:0;margin:0 0 2px;display:flex;gap:8px;align-items:center}
-legend .n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:8px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700}
-label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px;font-weight:500}
+fieldset{border:1px solid var(--rule);margin:0;padding:18px 18px 20px;min-width:0}
+legend{float:left;width:100%;font-weight:700;font-size:16px;padding:0;margin:0 0 14px;display:flex;gap:9px;align-items:center;line-height:1.3}
+legend + *{clear:both}
+legend + label, legend + .row2 > div > label{margin-top:0}
+legend .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-size:12.5px;font-weight:700;flex:none}
+label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px;font-weight:500;line-height:1.4}
 label b{color:var(--ink);font-weight:600}
-input[type=text],input[type=number],textarea,select{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--field);border:1px solid transparent;border-radius:10px;padding:11px 12px;transition:border-color .12s,background .12s}
+input[type=text],input[type=number],textarea,select{display:block;width:100%;font:inherit;font-size:14px;line-height:1.5;color:var(--ink);background:var(--field);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;transition:border-color .12s,background .12s}
 input[type=text]:hover,input[type=number]:hover,textarea:hover,select:hover{background:color-mix(in srgb,var(--field) 60%,var(--card))}
 input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);background:var(--card);box-shadow:0 0 0 3px var(--accent-soft)}
-textarea{min-height:92px;resize:vertical;font-size:13px;line-height:1.5;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+textarea{min-height:96px;resize:vertical;font-size:13.5px;line-height:1.6;font-family:inherit;font-variant-numeric:tabular-nums;letter-spacing:0}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;align-items:end}
+.row2 > div{min-width:0}
 .check{display:flex;gap:9px;align-items:flex-start;color:var(--ink);font-size:13px;margin-top:12px;line-height:1.5}
 .check input{margin-top:3px;accent-color:var(--accent);width:17px;height:17px}
 .hint{font-size:12.5px;color:var(--muted);margin:6px 0 0;line-height:1.55}
@@ -75,11 +78,11 @@ button.primary{background:var(--accent);border-color:var(--accent);color:var(--a
 button.primary:hover{filter:brightness(1.07)}
 button:disabled{opacity:.45;cursor:not-allowed;transform:none}
 button:focus-visible,summary:focus-visible,label:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.actions{position:sticky;bottom:0;z-index:15;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(6px);padding:12px 0 calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:8px}
+.actions{position:sticky;bottom:12px;z-index:15;background:var(--card);border:1px solid var(--rule);border-radius:16px;box-shadow:0 6px 24px rgba(22,25,28,.12);padding:10px;display:flex;gap:8px}
 .actions .primary{flex:1;padding:14px 16px;font-size:15px}
-@media (max-width:980px){.actions{position:fixed;left:0;right:0;bottom:0;padding:10px clamp(12px,3vw,28px) calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--rule);background:var(--card)}}
+@media (max-width:980px){.actions{position:fixed;left:0;right:0;bottom:0;border-radius:0;border-width:1px 0 0;padding:10px clamp(12px,3vw,28px) calc(10px + env(safe-area-inset-bottom,0px))}}
 
-details{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow)}
+details{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow)}
 details summary{cursor:pointer;font-weight:600;font-size:14px;list-style:none;display:flex;justify-content:space-between;align-items:center}
 details summary::-webkit-details-marker{display:none}
 details summary::after{content:"＋";color:var(--muted);font-weight:400}
@@ -89,7 +92,7 @@ details li{margin-bottom:6px}
 details li::marker{color:var(--accent)}
 
 /* 업로드 카드 */
-.upload{padding:18px}
+.upload{padding:18px 18px 16px}
 .upload h2{font-size:16px;font-weight:700}
 .upload .hint{margin:6px 0 12px}
 .drop{display:grid;gap:3px;place-items:center;text-align:center;border:1.5px dashed color-mix(in srgb,var(--accent) 45%,var(--rule));border-radius:14px;padding:26px 12px;cursor:pointer;margin:0;background:var(--accent-soft);transition:background .12s,border-color .12s}
@@ -103,7 +106,7 @@ details li::marker{color:var(--accent)}
 button.wide{width:100%;margin-top:10px}
 button.link{border:0;background:none;padding:8px 0 0;color:var(--accent);font-size:13px;font-weight:600}
 button.link:hover{background:none;text-decoration:underline}
-.or{font-size:12.5px;color:var(--muted);margin:2px 2px 0}
+.or{font-size:12.5px;color:var(--muted);margin:2px 4px 0;line-height:1.5}
 
 /* 알림 */
 .msg{display:flex;gap:10px;align-items:flex-start;border-radius:14px;padding:12px 14px;margin:0 0 8px;font-size:14px;line-height:1.55;background:var(--field);border:1px solid var(--rule)}
@@ -131,6 +134,7 @@ button.link:hover{background:none;text-decoration:underline}
 .zoomwrap{position:relative}
 .drawing{overflow:hidden;border-radius:12px;background:var(--sheet);touch-action:none;cursor:grab}
 .drawing.drag{cursor:grabbing}
+.drawing svg,.cand svg{letter-spacing:0;word-spacing:0}
 .drawing svg{display:block;width:100%;height:auto;max-height:76vh}
 .zoomctl{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
 .zoomctl button{width:38px;height:36px;padding:0;font-size:17px;border-radius:11px;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(4px);box-shadow:var(--shadow)}
@@ -160,6 +164,7 @@ tbody tr:last-child td{border-bottom:0}
 .sw{display:inline-block;width:12px;height:12px;border-radius:4px;vertical-align:-2px;margin-right:7px}
 .over{color:var(--ng);font-weight:700}
 h3{font-size:16px;font-weight:700;margin:2px 0 4px}
+#detailTitle{margin:6px 4px 0}
 #zoneBlock,#altBlock,.exportcard{padding:16px}
 #zoneBlock .hint{margin-bottom:6px}
 .alts tbody tr{cursor:pointer}
@@ -308,7 +313,7 @@ h3{font-size:16px;font-weight:700;margin:2px 0 4px}
 
 <main class="result" id="result" aria-live="polite">
   <div class="empty" id="empty">
-    <p>왼쪽에 슬래브·기둥 좌표를 넣거나 <b>예제 불러오기</b>를 누른 뒤 <b>구획 나누기</b>를 누르세요.</p>
+    <p>왼쪽에서 <b>IFC 파일</b>을 올리거나 <b>예제 IFC로 해보기</b>를 누르면 결과가 여기에 나옵니다.</p>
   </div>
   <div id="out" hidden>
     <div id="msgs"></div>
@@ -392,12 +397,20 @@ function crossOK(beam, pos, r, m) {
 
 function analyze(inp) {
   const W = [], E = [];
-  const poly = inp.slab.map(p => [p[0], p[1]]);
-  if (poly.length < 3) { E.push('슬래브 외곽선 꼭짓점을 3개 이상 입력하세요.'); return { E, W }; }
-  if (inp.columns.length < 2) { E.push('기둥 중심 좌표를 2개 이상 입력하세요.'); return { E, W }; }
-  for (let i = 0; i < poly.length; i++) {
-    const p = poly[i], q = poly[(i + 1) % poly.length];
-    if (Math.abs(p[0] - q[0]) > TOL && Math.abs(p[1] - q[1]) > TOL) { W.push('슬래브 외곽선에 사선 변이 있어 계단 모양으로 근사했습니다.'); break; }
+  // 슬래브는 여러 조각일 수 있다(Revit에서 바닥을 나눠 그린 경우). 조각들의 합집합을 한 바닥으로 본다
+  const polys = (inp.slabs && inp.slabs.length ? inp.slabs : [inp.slab])
+    .filter(p => Array.isArray(p) && p.length >= 3).map(p => p.map(q => [+q[0], +q[1]]));
+  const poly = polys[0];
+  if (!poly) { E.push('슬래브 외곽선 꼭짓점을 3개 이상 입력하세요.'); return { E, W }; }
+  if (inp.columns.length < 2) {
+    E.push(inp.columns.length ? '이 층을 받치는 기둥을 1개밖에 찾지 못했습니다. 보 구조 규칙(보 경간 기준)을 적용할 수 없습니다.'
+      : '이 층을 받치는 기둥을 찾지 못했습니다. 벽식 구조처럼 기둥이 없는 층은 보 경간을 기준으로 하는 규칙 1·2를 적용할 수 없습니다. 보 구조 층을 선택하세요.');
+    return { E, W };
+  }
+  const pipAny = (x, y) => polys.some(pg => pip(x, y, pg));
+  outer: for (const pg of polys) for (let i = 0; i < pg.length; i++) {
+    const p = pg[i], q = pg[(i + 1) % pg.length];
+    if (Math.abs(p[0] - q[0]) > TOL && Math.abs(p[1] - q[1]) > TOL) { W.push('슬래브 외곽선에 사선 변이 있어 계단 모양으로 근사했습니다.'); break outer; }
   }
   const r = inp.ratio, m = inp.mult;
   // 구조벽만 반영: 기준보다 얇은 벽(칸막이·건식벽)은 절단 판정에서 제외한다
@@ -424,7 +437,7 @@ function analyze(inp) {
   const onCol = (x, y) => cs.some(c => Math.abs(c[0] - x) <= gtol && Math.abs(c[1] - y) <= gtol);
   const touchesSlab = (x, y, o) => {
     const d = 0.05;
-    return o === 'h' ? (pip(x, y + d, poly) || pip(x, y - d, poly)) : (pip(x + d, y, poly) || pip(x - d, y, poly));
+    return o === 'h' ? (pipAny(x, y + d) || pipAny(x, y - d)) : (pipAny(x + d, y) || pipAny(x - d, y));
   };
 
   // 입력한 보(모델에서 읽은 보)를 먼저 등록: 양 끝이 기둥이면 큰보, 아니면 작은보
@@ -480,8 +493,12 @@ function analyze(inp) {
   // 조각마다 후보선 하나(조각 가운데)를 둔다. 판정이 같은 연속 구간 = 조각
   function cutCandidates(s0, s1, crossers) {
     const L = s1 - s0, lo = s0 + L * (1 - r) / 2, hi = s1 - L * (1 - r) / 2;
-    const step = Math.max(0.01, Math.min(0.025, (hi - lo) / 80));
-    const sig = p => { let k = '', any = false, n = 0; for (const b of crossers) if (p > b.a + TOL && p < b.b - TOL) { n++; const ok = crossOK(b, p, r, m).ok; k += ok ? '1' : '0'; if (ok) any = true; } return { k, ok: any || n === 0 }; };
+    // 그리드 경간 전체를 훑되, 판정은 실제로 가로지르는 보마다 그 보의 가운데 구간으로 한다.
+    // (다른 줄의 기둥 때문에 그리드가 잘게 나뉘어도, 긴 보의 유효 구간을 놓치지 않게)
+    // 가로지르는 보가 없는 자리는 이 경간의 가운데 구간 안에서만 허용한다
+    const step = Math.max(0.01, Math.min(0.025, L / 240));
+    const inThird = p => p >= lo - 1e-9 && p <= hi + 1e-9;
+    const sig = p => { let k = '', any = false, n = 0; for (const b of crossers) if (p > b.a + TOL && p < b.b - TOL) { n++; const ok = crossOK(b, p, r, m).ok; k += ok ? '1' : '0'; if (ok) any = true; } return n === 0 ? { k: inThird(p) ? 'T' : 'F', ok: inThird(p) } : { k, ok: any }; };
     const out = []; let run = null;
     const minW = inp.minCut > 0 ? inp.minCut : 0.3;
     const put = v => {
@@ -499,8 +516,8 @@ function analyze(inp) {
       }
       run = null;
     };
-    for (let p = lo; p <= hi + 1e-9; p += step) {
-      const q = Math.min(p, hi), g = sig(q);
+    for (let p = s0 + step; p <= s1 - step + 1e-9; p += step) {
+      const q = p, g = sig(q);
       if (run && run.k === g.k) run.b = q; else { flush(); run = { a: q, b: q, k: g.k, ok: g.ok }; }
     }
     flush();
@@ -512,19 +529,31 @@ function analyze(inp) {
   for (let i = 0; i < ys.length - 1; i++) cutY.push(...cutCandidates(ys[i], ys[i + 1], vB));
 
   // 셀 격자
-  const bx0 = Math.min(...poly.map(p => p[0])), bx1 = Math.max(...poly.map(p => p[0]));
-  const by0 = Math.min(...poly.map(p => p[1])), by1 = Math.max(...poly.map(p => p[1]));
-  let X = [...xs, ...cutX.map(c => c.pos), ...poly.map(p => p[0])], Y = [...ys, ...cutY.map(c => c.pos), ...poly.map(p => p[1])];
-  for (const b of beams) { if (b.o === 'v') { X.push(b.c); Y.push(b.a, b.b); } else { Y.push(b.c); X.push(b.a, b.b); } }
-  for (const rc of [...walls, ...openings]) { X.push(rc[0], rc[2]); Y.push(rc[1], rc[3]); }
-  X = uniqSorted(X.filter(v => v >= bx0 - EPS && v <= bx1 + EPS), 0.005);
-  Y = uniqSorted(Y.filter(v => v >= by0 - EPS && v <= by1 + EPS), 0.005);
+  const allPts = polys.flat();
+  const bx0 = Math.min(...allPts.map(p => p[0])), bx1 = Math.max(...allPts.map(p => p[0]));
+  const by0 = Math.min(...allPts.map(p => p[1])), by1 = Math.max(...allPts.map(p => p[1]));
+  // 반드시 정확해야 하는 좌표(그리드·절단 후보·보)와, 근사해도 되는 좌표(외곽선·벽·개구부)를 나눈다
+  const keepX = [...xs, ...cutX.map(c => c.pos)], keepY = [...ys, ...cutY.map(c => c.pos)];
+  for (const b of beams) { if (b.o === 'v') { keepX.push(b.c); keepY.push(b.a, b.b); } else { keepY.push(b.c); keepX.push(b.a, b.b); } }
+  const softX = allPts.map(p => p[0]), softY = allPts.map(p => p[1]);
+  for (const rc of [...walls, ...openings]) { softX.push(rc[0], rc[2]); softY.push(rc[1], rc[3]); }
+  const inX = v => v >= bx0 - EPS && v <= bx1 + EPS, inY = v => v >= by0 - EPS && v <= by1 + EPS;
+  let X, Y, snapG = 0;
+  // 곡선 외곽 등으로 좌표가 너무 많으면 근사 좌표만 격자에 맞춰 줄인다 (계산 폭주 방지)
+  for (;;) {
+    const sn = v => snapG ? Math.round(v / snapG) * snapG : v;
+    X = uniqSorted([...keepX, ...softX.map(sn)].filter(inX), 0.005);
+    Y = uniqSorted([...keepY, ...softY.map(sn)].filter(inY), 0.005);
+    if (X.length * Y.length <= 120000 || snapG >= 1) break;
+    snapG = snapG ? snapG * 2 : 0.05;
+  }
+  if (snapG) W.push(`외곽선·벽 좌표가 너무 촘촘해 ${snapG.toFixed(2)} m 간격으로 근사했습니다.`);
   const nx = X.length - 1, ny = Y.length - 1, idx = (i, j) => j * nx + i;
   const inPoly = new Uint8Array(nx * ny), active = new Uint8Array(nx * ny), blockKind = new Uint8Array(nx * ny); // 1=벽, 2=개구부
   let totalArea = 0;
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     const cx = (X[i] + X[i + 1]) / 2, cy = (Y[j] + Y[j + 1]) / 2, k = idx(i, j);
-    if (!pip(cx, cy, poly)) continue;
+    if (!pipAny(cx, cy)) continue;
     inPoly[k] = 1;
     if (openings.some(rc => inRect(cx, cy, rc))) { blockKind[k] = 2; continue; }
     // 벽 자리에도 슬래브는 이어져 있다. 잘라내지 않고 "절단 불가" 표시만 한다
@@ -652,7 +681,7 @@ function analyze(inp) {
     ? Math.abs(b.c - y) <= TOL && x >= b.a - TOL && x <= b.b + TOL
     : Math.abs(b.c - x) <= TOL && y >= b.a - TOL && y <= b.b + TOL);
   return {
-    E, W, poly, xs, ys, cs, beams, gtol, lines, cutX, cutY, X, Y, nx, ny, inPoly, active, blockKind, cantCell, edges, unitOf, units, comps,
+    E, W, poly, polys, xs, ys, cs, beams, gtol, lines, cutX, cutY, X, Y, nx, ny, inPoly, active, blockKind, cantCell, edges, unitOf, units, comps,
     totalArea, C, Cgiven: inp.C > 0, Nmin: Math.ceil(C / inp.P - 1e-9), maxUnit, onBeam,
     stats: { okN, ngN, why }, walls, openings, P: inp.P
   };
@@ -1040,6 +1069,7 @@ const IFCReader = (() => {
 
   function decodeStr(s) {
     return s.replace(/''/g, "'")
+      .replace(/\\X4\\([0-9A-Fa-f]+)\\X0\\/g, (m, h) => { let o = ''; for (let i = 0; i + 8 <= h.length; i += 8) o += String.fromCodePoint(parseInt(h.substr(i, 8), 16)); return o; })
       .replace(/\\X2\\([0-9A-Fa-f]+)\\X0\\/g, (m, h) => { let o = ''; for (let i = 0; i + 4 <= h.length; i += 4) o += String.fromCharCode(parseInt(h.substr(i, 4), 16)); return o; })
       .replace(/\\X\\([0-9A-Fa-f]{2})/g, (m, h) => String.fromCharCode(parseInt(h, 16)))
       .replace(/\\S\\(.)/g, (m, c) => String.fromCharCode(c.charCodeAt(0) + 128));
@@ -1245,7 +1275,7 @@ const IFCReader = (() => {
         out.pts.push(...bot, ...top);
         const wd = applyDir(G, d), len = Math.hypot(...wd);
         const ar = area2(p.outer) - p.inner.reduce((s, q) => s + area2(q), 0);
-        out.ext.push({ outer: bot, inner: p.inner.map(q => q.map(r => apply(G, r))), dirZ: len ? Math.abs(wd[2]) / len : 0, len, area: ar, vol: ar * a[3] * Math.abs(V.norm(dir(R(a[2])))[2] || 1) });
+        out.ext.push({ outer: bot, inner: p.inner.map(q => q.map(r => apply(G, r))), dirZ: len ? Math.abs(wd[2]) / len : 0, dir: len ? [wd[0] / len, wd[1] / len, wd[2] / len] : [0, 0, 1], len, area: ar, vol: ar * a[3] * Math.abs(V.norm(dir(R(a[2])))[2] || 1) });
         return;
       }
       if (t === 'IFCBOOLEANCLIPPINGRESULT' || t === 'IFCBOOLEANRESULT') {
@@ -1263,20 +1293,94 @@ const IFCReader = (() => {
       if (t === 'IFCFACETEDBREP' || t === 'IFCFACETEDBREPWITHVOIDS' || t === 'IFCMANIFOLDSOLIDBREP') { shell(R(a[0]), F, out); return; }
       if (t === 'IFCSHELLBASEDSURFACEMODEL') { for (const s of a[0] || []) shell(R(s), F, out); return; }
       if (t === 'IFCFACEBASEDSURFACEMODEL') { for (const s of a[0] || []) shell(R(s), F, out); return; }
-      if (t === 'IFCPOLYGONALFACESET' || t === 'IFCTRIANGULATEDFACESET' || t === 'IFCTRIANGULATEDIRREGULARNETWORK') { const pl = A(R(a[0])); if (pl) for (const c of pl[0] || []) out.pts.push(apply(F, [c[0], c[1], c[2] || 0])); return; }
+      if (t === 'IFCPOLYGONALFACESET' || t === 'IFCTRIANGULATEDFACESET' || t === 'IFCTRIANGULATEDIRREGULARNETWORK') {
+        const pl = A(R(a[0])); if (!pl) return;
+        const P = (pl[0] || []).map(c => apply(F, [c[0], c[1], c[2] || 0]));
+        out.pts.push(...P);
+        if (out.faces) {
+          if (t === 'IFCPOLYGONALFACESET') {
+            for (const fr of a[2] || []) { const fa = A(R(fr)); if (!fa) continue; const loops = [fa[0] || []].concat(T(R(fr)) === 'IFCINDEXEDPOLYGONALFACEWITHVOIDS' ? (fa[1] || []) : []); out.faces.push(loops.map(l => l.map(i => P[i - 1]).filter(Boolean))); }
+          } else {
+            for (const tri of a[3] || []) out.faces.push([tri.map(i => P[i - 1]).filter(Boolean)]);
+          }
+        }
+        return;
+      }
       if (t === 'IFCBOUNDINGBOX') { const c = pt(R(a[0])); for (const dx of [0, a[1]]) for (const dy of [0, a[2]]) for (const dz of [0, a[3]]) out.pts.push(apply(F, [c[0] + dx, c[1] + dy, c[2] + dz])); return; }
     }
     function shell(id, F, out) {
       const a = A(id); if (!a) return; const seen = new Set();
       for (const f of a[0] || []) {
         const fa = A(R(f)); if (!fa) continue;
+        const loops = [];
         for (const b of fa[0] || []) {
           const ba = A(R(b)); if (!ba) continue; const lp = A(R(ba[0])); if (!lp) continue;
-          for (const r of lp[0] || []) { const q = R(r); if (q && !seen.has(q)) { seen.add(q); out.pts.push(apply(F, pt(q))); } }
+          const loop = [];
+          for (const r of lp[0] || []) { const q = R(r); if (!q) continue; const w = apply(F, pt(q)); loop.push(w); if (!seen.has(q)) { seen.add(q); out.pts.push(w); } }
+          loops.push(loop);
         }
+        if (out.faces && loops.length) out.faces.push(loops);
       }
     }
-    function geom(pid) {
+    // 면 집합에서 "윗면"만 골라 한 번씩만 나오는 모서리를 이어 외곽선(과 구멍)을 만든다
+    function outlineFromFaces(faces, zTop, tol) {
+      const key = p => Math.round(p[0] / 1e-4) + ',' + Math.round(p[1] / 1e-4);
+      const cnt = new Map(), pos = new Map(), segs = [], verts = new Map();
+      for (const loops of faces) {
+        if (!loops.length || !loops[0].length) continue;
+        if (!loops.every(l => l.every(p => Math.abs(p[2] - zTop) <= tol))) continue;
+        for (const l of loops) for (let i = 0; i < l.length; i++) {
+          const p = l[i], q = l[(i + 1) % l.length];
+          if (key(p) === key(q)) continue;
+          segs.push([p, q]); verts.set(key(p), p); verts.set(key(q), q);
+        }
+      }
+      // 부분 겹침 처리: 다른 꼭짓점이 변 위에 놓이면 그 점에서 변을 나눈다
+      const V = Array.from(verts.values());
+      const split = segs.length * V.length <= 6e6;
+      for (const [p, q] of segs) {
+        let pts = [p, q];
+        if (split) {
+          const dx = q[0] - p[0], dy = q[1] - p[1], L2 = dx * dx + dy * dy;
+          const mids = [];
+          if (L2 > 1e-10) for (const v of V) {
+            const t = ((v[0] - p[0]) * dx + (v[1] - p[1]) * dy) / L2;
+            if (t <= 1e-6 || t >= 1 - 1e-6) continue;
+            const ex = p[0] + t * dx - v[0], ey = p[1] + t * dy - v[1];
+            if (ex * ex + ey * ey < 1e-8) mids.push([t, v]);
+          }
+          if (mids.length) { mids.sort((a, b) => a[0] - b[0]); pts = [p, ...mids.map(m => m[1]), q]; }
+        }
+        for (let i = 0; i + 1 < pts.length; i++) {
+          const kp = key(pts[i]), kq = key(pts[i + 1]); if (kp === kq) continue;
+          pos.set(kp, pts[i]); pos.set(kq, pts[i + 1]);
+          const e = kp < kq ? kp + '|' + kq : kq + '|' + kp;
+          cnt.set(e, (cnt.get(e) || 0) + 1);
+        }
+      }
+      const adj = new Map();
+      for (const [e, c] of cnt) { if (c !== 1) continue; const [u, v] = e.split('|'); (adj.get(u) || adj.set(u, []).get(u)).push(v); (adj.get(v) || adj.set(v, []).get(v)).push(u); }
+      if (!adj.size) return null;
+      for (const [, l] of adj) if (l.length !== 2) return null; // 이어지지 않는 모서리 → 신뢰 불가
+      const used = new Set(), rings = [];
+      for (const start of adj.keys()) {
+        if (used.has(start)) continue;
+        const ring = [start]; used.add(start); let prev = null, cur = start;
+        for (let guard = 0; guard < 100000; guard++) {
+          const nx = adj.get(cur).find(v => v !== prev && !(v === start && ring.length < 3));
+          if (nx === undefined || nx === start) break;
+          if (used.has(nx)) return null;
+          ring.push(nx); used.add(nx); prev = cur; cur = nx;
+        }
+        if (ring.length >= 3) rings.push(ring.map(k => pos.get(k)));
+      }
+      const simplify = r => r.filter((b, i) => { const a = r[(i + r.length - 1) % r.length], c = r[(i + 1) % r.length]; return Math.abs((b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0])) > 1e-8; });
+      const ar = r => { let x = 0; for (let i = 0; i < r.length; i++) { const p = r[i], q = r[(i + 1) % r.length]; x += p[0] * q[1] - q[0] * p[1]; } return Math.abs(x) / 2; };
+      const rs = rings.map(simplify).filter(r => r.length >= 3).sort((p, q) => ar(q) - ar(p));
+      if (!rs.length) return null;
+      return { outer: rs[0], inner: rs.slice(1), area: ar(rs[0]) - rs.slice(1).reduce((x, r) => x + ar(r), 0) };
+    }
+    function geom(pid, wantFaces) {
       const a = A(pid); if (!a) return null;
       const F = placement(R(a[5]));
       const pds = A(R(a[6])); if (!pds) return null;
@@ -1285,14 +1389,16 @@ const IFCReader = (() => {
       let use = reps.filter(r => idOf(r) === 'Body');
       if (!use.length) use = reps.filter(r => !['Axis', 'FootPrint', 'Annotation', 'Box', 'Profile'].includes(idOf(r)));
       if (!use.length) use = reps.filter(r => idOf(r) === 'Box');
-      const out = { pts: [], ext: [] };
+      const out = { pts: [], ext: [], faces: wantFaces ? [] : null };
       for (const r of use) for (const it of (A(r)[3] || [])) items(R(it), F, out, 0);
       if (!out.pts.length) return null;
       const s = lenScale; let mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
       for (const p of out.pts) for (let k = 0; k < 3; k++) { if (p[k] < mn[k]) mn[k] = p[k]; if (p[k] > mx[k]) mx[k] = p[k]; }
       return {
         min: mn.map(v => v * s), max: mx.map(v => v * s),
-        ext: out.ext.map(e => ({ outer: e.outer.map(p => [p[0] * s, p[1] * s, p[2] * s]), inner: e.inner.map(q => q.map(p => [p[0] * s, p[1] * s])), dirZ: e.dirZ, len: e.len * s, area: e.area * s * s, vol: e.vol * s * s * s }))
+        pts: out.pts.map(p => [p[0] * s, p[1] * s, p[2] * s]),
+        faces: out.faces ? out.faces.map(loops => loops.map(l => l.map(p => [p[0] * s, p[1] * s, p[2] * s]))) : null,
+        ext: out.ext.map(e => ({ outer: e.outer.map(p => [p[0] * s, p[1] * s, p[2] * s]), inner: e.inner.map(q => q.map(p => [p[0] * s, p[1] * s])), dirZ: e.dirZ, dir: e.dir, len: e.len * s, area: e.area * s * s, vol: e.vol * s * s * s }))
       };
     }
 
@@ -1318,50 +1424,180 @@ const IFCReader = (() => {
     const storeys = list('IFCBUILDINGSTOREY').map(id => {
       const a = A(id), els = contained.get(id) || [], c = { slab: 0, column: 0, beam: 0, wall: 0 };
       for (const e of els) { const k = kindOf(e); if (k) c[k]++; }
-      return { id, name: a[2] || a[7] || ('#' + id), elev: (typeof a[9] === 'number' ? a[9] : 0) * lenScale, count: c };
+      const zw = placement(R(a[5])).o[2] * lenScale;
+      return { id, name: a[2] || a[7] || ('#' + id), elev: typeof a[9] === 'number' ? a[9] * lenScale : zw, z: zw, count: c };
     }).sort((p, q) => p.elev - q.elev);
     const allOf = k => TYPES[k].flatMap(list);
+    const aggr = new Map();
+    for (const rid of list('IFCRELAGGREGATES')) {
+      const a = A(rid); const par = R(a[4]); if (!par) continue;
+      let l = aggr.get(par); if (!l) aggr.set(par, l = []);
+      for (const r of a[5] || []) if (R(r)) l.push(R(r));
+    }
+    const mergeG = gs => {
+      gs = gs.filter(Boolean); if (!gs.length) return null;
+      const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+      for (const g of gs) for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], g.min[k]); mx[k] = Math.max(mx[k], g.max[k]); }
+      return { min: mn, max: mx, pts: gs.flatMap(g => g.pts), ext: gs.flatMap(g => g.ext), faces: gs.some(g => g.faces) ? gs.flatMap(g => g.faces || []) : null, parts: gs.length };
+    };
+    // 본체에 형상이 없으면(Revit '부재 분할' 등) 하위 조각들의 형상을 합친다
+    const geomAny = (id, wantFaces, depth) => {
+      let g = null; try { g = geom(id, wantFaces); } catch (e) { g = null; }
+      if (g || (depth || 0) > 3) return g;
+      const kids = aggr.get(id); if (!kids || !kids.length) return null;
+      return mergeG(kids.map(k => geomAny(k, wantFaces, (depth || 0) + 1)));
+    };
     const gcache = new Map();
-    const G = id => { if (!gcache.has(id)) { let g = null; try { g = geom(id); } catch (e) { g = null; } gcache.set(id, g); } return gcache.get(id); };
+    const G = id => { if (!gcache.has(id)) gcache.set(id, geomAny(id, false)); return gcache.get(id); };
+    const fcache = new Map();
+    const GF = id => { if (!fcache.has(id)) fcache.set(id, geomAny(id, true)); return fcache.get(id); };
+    // 슬래브 하나를 "윗면 외곽 + 두께 + 체적" 형태로 정리 (압출이든 Brep·삼각망이든)
+    function slabShape(id) {
+      const g = G(id); if (!g) return null;
+      let best = null;
+      const vex = g.ext.filter(e => e.dirZ > 0.95 && e.outer.length >= 3);
+      for (const e of vex) { const a = area2(e.outer); if (!best || a > best.area) best = { outer: e.outer, inner: e.inner, t: e.len, vol: e.vol, area: a, src: 'ext' }; }
+      if (vex.length > 1) {
+        // 같은 높이의 압출 조각들을 한 외곽으로 합친다
+        const z0 = best.outer[0][2];
+        const same = vex.filter(e => Math.abs(e.outer[0][2] - z0) < 0.01);
+        if (same.length > 1) {
+          const o = outlineFromFaces(same.map(e => [e.outer]), z0, 0.005);
+          const holes = same.flatMap(e => e.inner || []);
+          if (o && o.area > best.area * 1.01) return { outer: o.outer, inner: o.inner.concat(holes), t: best.t, vol: same.reduce((x, e) => x + e.vol, 0), area: o.area, src: 'ext-merged', g };
+        }
+      }
+      if (best) return { ...best, g };
+      const gf = GF(id); if (!gf || !gf.faces || !gf.faces.length) return null;
+      const t = g.max[2] - g.min[2];
+      const o = outlineFromFaces(gf.faces, g.max[2], Math.max(0.003, t * 0.02));
+      if (!o) return { outer: [[g.min[0], g.min[1], g.max[2]], [g.max[0], g.min[1], g.max[2]], [g.max[0], g.max[1], g.max[2]], [g.min[0], g.max[1], g.max[2]]], inner: [], t, vol: (g.max[0] - g.min[0]) * (g.max[1] - g.min[1]) * t, area: (g.max[0] - g.min[0]) * (g.max[1] - g.min[1]), src: 'bbox', g };
+      return { outer: o.outer, inner: o.inner, t, vol: o.area * t, area: o.area, src: 'faces', g };
+    }
 
     function extract(storeyId, opts) {
       const minWallT = (opts && opts.minWallT > 0) ? opts.minWallT : 0.2;
       const W = [];
       const inStorey = (contained.get(storeyId) || []);
       const st = storeys.find(s => s.id === storeyId);
-      // 1) 슬래브: 이 층에 속한 바닥 중 수직 압출 면적이 가장 큰 것
-      let slabs = inStorey.filter(e => kindOf(e) === 'slab');
-      const pred = id => { const a = A(id); const v = a[8]; return v && v.e ? v.e : ''; };
-      if (slabs.some(s => pred(s) !== 'ROOF' && pred(s) !== 'LANDING')) slabs = slabs.filter(s => pred(s) !== 'ROOF' && pred(s) !== 'LANDING');
-      let best = null;
-      for (const s of slabs) {
-        const g = G(s); if (!g) continue;
-        for (const e of g.ext) if (e.dirZ > 0.95) { const ar = area2(e.outer); if (!best || ar > best.ar) best = { id: s, e, g, ar }; }
-        if (!g.ext.some(e => e.dirZ > 0.95)) { const ar = (g.max[0] - g.min[0]) * (g.max[1] - g.min[1]); if (!best || (best.brep && ar > best.ar)) best = best && !best.brep ? best : { id: s, e: null, g, ar, brep: true }; }
+      // 1) 슬래브: 이 층에 속한 바닥. 층 소속 정보가 없으면 층 높이 근처의 바닥을 찾는다
+      const pred = id => { const a = A(id); const v = a && a[8]; return v && v.e ? v.e : ''; };
+      const usable = list0 => { const f = list0.filter(s => !['ROOF', 'LANDING'].includes(pred(s))); return f.length ? f : list0; };
+      let slabIds = usable(inStorey.filter(e => kindOf(e) === 'slab'));
+      if (!slabIds.length) {
+        const sz = st.z;
+        slabIds = usable(allOf('slab').filter(id => { const g = G(id); return g && Math.abs(g.max[2] - sz) < 0.6; }));
+        if (slabIds.length) W.push('층 소속 정보가 없는 슬래브를 층 높이로 찾아 사용했습니다.');
       }
-      if (!best) throw new Error(`'${st.name}' 층에 슬래브(바닥)가 없습니다. 다른 층을 고르세요.`);
-      if (slabs.length > 1) W.push(`이 층에 슬래브가 ${slabs.length}개 있어 가장 큰 것만 사용했습니다.`);
-      const sg = best.g;
-      let poly, t, zTop = sg.max[2], zBot = sg.min[2], openings = [];
-      if (best.e) {
-        poly = best.e.outer.map(p => [p[0], p[1]]);
-        t = best.e.len;
-        for (const q of best.e.inner) { const xs = q.map(p => p[0]), ys = q.map(p => p[1]); openings.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]); }
-      } else {
-        poly = [[sg.min[0], sg.min[1]], [sg.max[0], sg.min[1]], [sg.max[0], sg.max[1]], [sg.min[0], sg.max[1]]];
-        t = zTop - zBot; W.push('슬래브 형상이 면(Brep)으로만 되어 있어 외곽을 사각형으로 근사했습니다.');
+      const shapes = slabIds.map(id => ({ id, sh: slabShape(id) })).filter(x => x.sh && x.sh.area > 0.5);
+      if (!shapes.length) throw new Error(`'${st.name}' 층에서 슬래브(바닥)를 찾지 못했습니다. 다른 층을 고르거나, IFC 내보내기에 바닥이 포함됐는지 확인하세요.`);
+      shapes.sort((p, q) => q.sh.area - p.sh.area);
+      const main = shapes[0];
+      // 윗면 높이가 같은(±0.3 m) 조각은 한 바닥으로 합친다. 계단참처럼 높이가 다른 것은 제외
+      const zMain = main.sh.g.max[2];
+      let parts = shapes.filter(x => Math.abs(x.sh.g.max[2] - zMain) <= 0.3);
+      const dropped = shapes.length - parts.length;
+      if (dropped) W.push(`높이가 다른 슬래브 ${dropped}개(계단참 등)는 제외했습니다.`);
+      if (parts.some(x => x.sh.src === 'bbox')) W.push('일부 슬래브는 외곽선을 읽지 못해 사각형으로 근사했습니다.');
+      const sg = main.sh.g;
+      // 0) 건물이 X·Y축에서 돌아가 있으면(진북 회전 등) 축에 맞게 돌려서 계산한다
+      //    먼저 슬래브 외곽만으로 각도를 구하고, 외곽이 직교형이 아니어서 애매할 때만 이 층의 수평 보 방향을 보탠다
+      const est = () => {
+        const bins = new Float64Array(180), items = []; let w = 0;
+        const norm = a => { a = ((a % 90) + 90) % 90; return a; };
+        const E = {
+          add(dx, dy, wt) { if (!(wt > 1e-6)) return; const a = norm(Math.atan2(dy, dx) * 180 / Math.PI); bins[Math.floor(a * 2) % 180] += wt; items.push([a, wt]); w += wt; },
+          peak() { let bi = 0, bv = -1; for (let i = 0; i < 180; i++) { const v = bins[(i + 179) % 180] + 2 * bins[i] + bins[(i + 1) % 180]; if (v > bv) { bv = v; bi = i; } } return (bi + 0.5) / 2; },
+          get angle() { if (!w) return 0; const pk = E.peak(); let sx = 0, sw = 0; for (const [a, wt] of items) { let d = a - pk; if (d > 45) d -= 90; if (d < -45) d += 90; if (Math.abs(d) <= 2) { sx += d * wt; sw += wt; } } let r = pk + (sw ? sx / sw : 0); if (r > 45) r -= 90; return r * Math.PI / 180; },
+          get conc() { if (!w) return 0; const ang = E.angle * 180 / Math.PI; let sw = 0; for (const [a, wt] of items) { let d = norm(a - ang); if (d > 45) d -= 90; if (Math.abs(d) <= 2) sw += wt; } return sw / w; }
+        };
+        return E;
+      };
+      const ring = (E, o) => { for (let i = 0; i < o.length; i++) { const p = o[i], q = o[(i + 1) % o.length]; E.add(q[0] - p[0], q[1] - p[1], Math.hypot(q[0] - p[0], q[1] - p[1])); } };
+      const Es = est();
+      for (const x of parts) if (x.sh.src !== 'bbox') ring(Es, x.sh.outer);
+      let theta = 0;
+      if (Es.conc > 0.6) theta = Es.angle;
+      else {
+        const Eb = est();
+        for (const x of parts) if (x.sh.src !== 'bbox') ring(Eb, x.sh.outer);
+        for (const id of allOf('beam')) {
+          const g = G(id); if (!g || g.max[2] < sg.min[2] - 1.5 || g.max[2] > sg.max[2] + 0.5) continue;
+          for (const e of g.ext) if (e.dir && Math.abs(e.dir[2]) < 0.05) Eb.add(e.dir[0], e.dir[1], e.len);
+        }
+        if (Eb.conc > 0.6) theta = Eb.angle;
       }
-      // 중복점 정리
-      poly = poly.filter((p, i) => { const q = poly[(i + poly.length - 1) % poly.length]; return Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-4; });
-      for (const op of voids.get(best.id) || []) { const g = G(op); if (g) openings.push([g.min[0], g.min[1], g.max[0], g.max[1]]); }
-      const bx = [Math.min(...poly.map(p => p[0])) - 1, Math.min(...poly.map(p => p[1])) - 1, Math.max(...poly.map(p => p[0])) + 1, Math.max(...poly.map(p => p[1])) + 1];
+      if (Math.abs(theta) < 0.2 * Math.PI / 180) theta = 0;
+      const rx = (sg.min[0] + sg.max[0]) / 2, ry = (sg.min[1] + sg.max[1]) / 2, cT = Math.cos(-theta), sT = Math.sin(-theta);
+      const rot = p => [rx + (p[0] - rx) * cT - (p[1] - ry) * sT, ry + (p[0] - rx) * sT + (p[1] - ry) * cT];
+      const Gr = id => {
+        const g = G(id); if (!g) return null;
+        if (!theta) return g;
+        if (g._rt === theta) return g._r;
+        const mn = [Infinity, Infinity, g.min[2]], mx = [-Infinity, -Infinity, g.max[2]];
+        for (const p of g.pts) { const q = rot(p); if (q[0] < mn[0]) mn[0] = q[0]; if (q[1] < mn[1]) mn[1] = q[1]; if (q[0] > mx[0]) mx[0] = q[0]; if (q[1] > mx[1]) mx[1] = q[1]; }
+        g._rt = theta; g._r = { min: mn, max: mx, ext: g.ext };
+        return g._r;
+      };
+      if (theta) W.push(`모델이 X·Y축에서 ${(theta * 180 / Math.PI).toFixed(1)}° 돌아가 있어, 그리드에 맞게 돌려서 계산했습니다.`);
+      // 주 방향과 3° 넘게 다른 슬래브(다른 방향으로 꺾인 날개동 등)는 한 평면에서 같이 풀 수 없어 제외한다
+      const skew = [];
+      for (let i = parts.length - 1; i >= 1; i--) {
+        const x = parts[i]; if (x.sh.src === 'bbox') continue;
+        const Ep = est(); ring(Ep, x.sh.outer);
+        if (Ep.conc < 0.6) continue;
+        let d = Math.abs((Ep.angle - theta) * 180 / Math.PI) % 90; if (d > 45) d = 90 - d;
+        if (d > 3) { skew.push(x); parts.splice(i, 1); }
+      }
+      if (skew.length) W.push(`주 방향과 다르게 꺾인 슬래브 ${skew.length}개(날개동 등)는 제외했습니다. 그 부분은 따로 계산해야 합니다.`);
+      if (parts.length > 1) W.push(`이 층의 슬래브 ${parts.length}개를 한 바닥으로 합쳐 계산했습니다.`);
+      const zTop = Math.max(...parts.map(x => x.sh.g.max[2])), zBot = Math.min(...parts.map(x => x.sh.g.min[2]));
+      const t = main.sh.t;
+      const openings = [];
+      const clean = pg => pg.filter((p, i) => { const q = pg[(i + pg.length - 1) % pg.length]; return Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-4; });
+      const polys = [];
+      for (const x of parts) {
+        if (x.sh.src === 'bbox') { const r = Gr(x.id); polys.push([[r.min[0], r.min[1]], [r.max[0], r.min[1]], [r.max[0], r.max[1]], [r.min[0], r.max[1]]]); }
+        else polys.push(clean(x.sh.outer.map(p => rot(p))));
+        for (const q0 of x.sh.inner || []) { const q = q0.map(p => rot(p)); const xs = q.map(p => p[0]), ys = q.map(p => p[1]); openings.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]); }
+        for (const op of voids.get(x.id) || []) { const g = Gr(op); if (g) openings.push([g.min[0], g.min[1], g.max[0], g.max[1]]); }
+      }
+      // 같은 개구부가 프로파일 구멍과 개구부 객체로 두 번 잡히면 하나로
+      const uniqOpen = [];
+      for (const o of openings) if (!uniqOpen.some(q => q.every((v, i) => Math.abs(v - o[i]) < 0.02))) uniqOpen.push(o);
+      openings.length = 0; openings.push(...uniqOpen);
+      let poly = polys[0], slabRings = [polys[0]];
+      if (polys.length > 1) {
+        const u = outlineFromFaces(polys.map(r => [r.map(p => [p[0], p[1], 0])]), 0, 1e-6);
+        if (u) {
+          const rings = [u.outer, ...u.inner].map(r => r.map(p => [p[0], p[1]]));
+          const areaR = r => { let x = 0; for (let i = 0; i < r.length; i++) { const p = r[i], q = r[(i + 1) % r.length]; x += p[0] * q[1] - q[0] * p[1]; } return Math.abs(x) / 2; };
+          const pin = (pt, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const a = r[i], b = r[j]; if ((a[1] > pt[1]) !== (b[1] > pt[1]) && pt[0] < (b[0] - a[0]) * (pt[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+          rings.sort((p, q) => areaR(q) - areaR(p));
+          const outers = [];
+          for (const r of rings) {
+            const mid = [(r[0][0] + r[1][0]) / 2 + 1e-3, (r[0][1] + r[1][1]) / 2 + 1e-3];
+            const host = outers.find(o => pin(r[0], o) && pin(mid, o));
+            if (host) { const xs = r.map(p => p[0]), ys = r.map(p => p[1]); openings.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]); }
+            else outers.push(r);
+          }
+          poly = outers[0]; slabRings = outers;
+          if (outers.length > 1) W.push(`이 층 바닥이 서로 떨어진 ${outers.length}덩어리로 되어 있습니다.`);
+        } else {
+          // 슬래브끼리 겹쳐 있으면 외곽을 한 줄로 합칠 수 없다. 계산은 셀 단위 합집합으로 하므로 모두 그대로 넘긴다
+          slabRings = polys.slice();
+          W.push('슬래브 외곽이 서로 겹쳐 있어 겹친 영역을 합쳐서 계산했습니다(총 물량은 겹친 만큼 크게 잡혔을 수 있음).');
+        }
+      }
+      const allP = slabRings.flat();
+      const bx = [Math.min(...allP.map(p => p[0])) - 1, Math.min(...allP.map(p => p[1])) - 1, Math.max(...allP.map(p => p[0])) + 1, Math.max(...allP.map(p => p[1])) + 1];
       const inBox = g => g.max[0] > bx[0] && g.min[0] < bx[2] && g.max[1] > bx[1] && g.min[1] < bx[3];
-      let slabVol = best.e ? best.e.vol : (sg.max[0] - sg.min[0]) * (sg.max[1] - sg.min[1]) * t;
+      let slabVol = parts.reduce((v, x) => v + x.sh.vol, 0);
 
       // 2) 기둥: 슬래브 높이에 걸치는 기둥 (아래층 기둥 상단 / 위층 기둥 하단)
       const columns = [];
       for (const c of allOf('column')) {
-        const g = G(c); if (!g || !inBox(g)) continue;
+        const g = Gr(c); if (!g || !inBox(g)) continue;
         if (g.max[2] < zBot - 0.05 || g.min[2] > zTop + 0.05) continue;
         const cx = (g.min[0] + g.max[0]) / 2, cy = (g.min[1] + g.max[1]) / 2;
         if (!columns.some(q => Math.hypot(q[0] - cx, q[1] - cy) < 0.15)) columns.push([cx, cy, Math.max(g.max[0] - g.min[0], g.max[1] - g.min[1])]);
@@ -1369,7 +1605,7 @@ const IFCReader = (() => {
       // 3) 보: 윗면이 슬래브 높이 근처인 수평 보
       const beams = []; let diag = 0, beamVol = 0;
       for (const b of allOf('beam')) {
-        const g = G(b); if (!g || !inBox(g)) continue;
+        const g = Gr(b); if (!g || !inBox(g)) continue;
         if (g.max[2] < zBot - 0.3 || g.max[2] > zTop + 0.3) continue;
         const dx = g.max[0] - g.min[0], dy = g.max[1] - g.min[1], dz = g.max[2] - g.min[2];
         if (Math.min(dx, dy) > 1.5) { diag++; continue; }
@@ -1402,22 +1638,24 @@ const IFCReader = (() => {
       // 4) 벽: 슬래브 높이에 걸치는 직선 벽 → 사각형
       const walls = []; let skipW = 0, thinW = 0;
       for (const w of allOf('wall')) {
-        const g = G(w); if (!g || !inBox(g)) continue;
+        const g = Gr(w); if (!g || !inBox(g)) continue;
         if (g.max[2] < zBot - 0.05 || g.min[2] > zTop + 0.05) continue;
         const dx = g.max[0] - g.min[0], dy = g.max[1] - g.min[1];
         if (Math.min(dx, dy) > 1.0) { skipW++; continue; }
         if (Math.min(dx, dy) < minWallT) { thinW++; continue; }
-        walls.push([g.min[0], g.min[1], g.max[0], g.max[1]]);
+        const wr = [g.min[0], g.min[1], g.max[0], g.max[1]];
+        // 위층 벽·아래층 벽이 같은 자리에 겹치면 하나로
+        if (!walls.some(q => q.every((v, i) => Math.abs(v - wr[i]) < 0.02))) walls.push(wr);
       }
       if (skipW) W.push(`사선·곡선 벽 ${skipW}개는 제외했습니다.`);
       if (thinW) W.push(`두께 ${minWallT} m 미만인 칸막이벽 ${thinW}개는 제외했습니다(구조벽만 반영).`);
       // 좌표를 슬래브 좌하단 기준으로 옮기고 mm 단위로 반올림
-      const ox = Math.min(...poly.map(p => p[0])), oy = Math.min(...poly.map(p => p[1]));
+      const ox = Math.min(...allP.map(p => p[0])), oy = Math.min(...allP.map(p => p[1]));
       const r3 = v => Math.round(v * 1000) / 1000;
       const mvx = v => r3(v - ox), mvy = v => r3(v - oy);
       return {
         project: projName, floor: st.name,
-        slab: poly.map(p => [mvx(p[0]), mvy(p[1])]), t: r3(t), C: Math.round((slabVol + beamVol) * 10) / 10,
+        slab: poly.map(p => [mvx(p[0]), mvy(p[1])]), slabs: slabRings.map(pg => pg.map(p => [mvx(p[0]), mvy(p[1])])), t: r3(t), C: Math.round((slabVol + beamVol) * 10) / 10,
         columns: columns.map(c => [mvx(c[0]), mvy(c[1])]),
         beams: beams.map(b => b.o === 'h' ? [mvx(b.a), mvy(b.c), mvx(b.b), mvy(b.c), r3(b.w)] : [mvx(b.c), mvy(b.a), mvx(b.c), mvy(b.b), r3(b.w)]),
         walls: walls.map(w => [mvx(w[0]), mvy(w[1]), mvx(w[2]), mvy(w[3])]),
@@ -1456,7 +1694,7 @@ const rowsText = rows => (rows || []).map(r => r.join(', ')).join('\n');
 function fill(o) {
   const set = (id, v) => { if (v !== undefined && v !== null) $('#' + id).value = v; };
   set('project', o.project); set('floor', o.floor);
-  $('#slab').value = rowsText(o.slab); $('#columns').value = rowsText(o.columns);
+  $('#slab').value = (o.slabs && o.slabs.length > 1 ? o.slabs : [o.slab]).map(rowsText).join('\n\n'); $('#columns').value = rowsText(o.columns);
   $('#beams').value = rowsText(o.beams); $('#walls').value = rowsText(o.walls); $('#openings').value = rowsText(o.openings);
   set('t', o.t); $('#C').value = o.C > 0 ? o.C : ''; set('P', o.P); if (o.N !== undefined) $('#N').value = o.N > 0 ? o.N : '';
   if (o.ratio !== undefined) $('#ratio').value = o.ratio; set('mult', o.mult); set('defW', o.defW); set('minCut', o.minCut); set('cantMin', o.cantMin); set('gridTol', o.gridTol); set('minWallT', o.minWallT);
@@ -1472,6 +1710,11 @@ function parseRows(text, n, label, errs) {
   if (bad.length) errs.push(`${label}: ${bad.join(', ')}번째 줄을 읽지 못했습니다. 숫자를 쉼표로 구분해 입력하세요.`);
   return rows;
 }
+function parseRings(text, label, errs) {
+  const blocks = text.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+  const rings = blocks.map(b => parseRows(b, 2, label, errs)).filter(r => r.length >= 3);
+  return rings;
+}
 function parseRatio(s) { s = String(s).trim(); if (s.includes('/')) { const [a, b] = s.split('/').map(Number); return a / b; } return Number(s); }
 const num = id => { const v = $('#' + id).value.trim(); return v === '' ? NaN : Number(v); };
 
@@ -1479,7 +1722,7 @@ function readInputs() {
   const errs = [];
   const inp = {
     project: $('#project').value.trim(), floor: $('#floor').value.trim(),
-    slab: parseRows($('#slab').value, 2, '슬래브 외곽선', errs),
+    slabs: parseRings($('#slab').value, '슬래브 외곽선', errs),
     columns: parseRows($('#columns').value, 2, '기둥', errs),
     beams: parseRows($('#beams').value, 4, '보', errs),
     walls: parseRows($('#walls').value, 4, '벽', errs).map(normRect),
@@ -1488,6 +1731,7 @@ function readInputs() {
     ratio: parseRatio($('#ratio').value), mult: num('mult'), defW: num('defW'), minCut: num('minCut'), cantMin: num('cantMin'), gridTol: num('gridTol'), minWallT: num('minWallT'),
     restarts: Math.max(10, Math.min(500, num('restarts') || 120)), cantExt: $('#cantExt').checked
   };
+  inp.slab = inp.slabs[0] || [];
   if (!(inp.P > 0)) errs.push('1일 최대 타설량 P를 0보다 큰 값으로 입력하세요.');
   if (!(inp.C > 0) && !(inp.t > 0)) errs.push('슬래브 두께 t 또는 총 타설량 C 중 하나는 입력해야 합니다.');
   if (!(inp.ratio > 0 && inp.ratio <= 1)) errs.push('가운데 구간 비율은 0보다 크고 1 이하여야 합니다 (예: 1/3).');
@@ -1529,7 +1773,7 @@ function compute() {
   const big = M.units[M.maxUnit];
   if (big.vol > inp.P + 1e-6) {
     state.fail = true;
-    msgs.unshift(['err', `반드시 한 번에 쳐야 하는 영역(최소 타설 단위) 중 가장 큰 것이 ${f1(big.vol)} ㎥로, 하루 최대 타설량 ${inp.P} ㎥를 넘습니다. 구역을 몇 개로 나누든 계획이 나오지 않습니다. 빨간 빗금 영역의 벽·개구부 배치나 P를 확인하세요.`]);
+    msgs.unshift(['err', `한 번에 쳐야 하는 가장 큰 덩어리(최소 타설 단위)가 ${f1(big.vol)} ㎥로 하루 한도 ${inp.P} ㎥를 넘어, 구역 수와 관계없이 계획을 세울 수 없습니다. 도면의 빨간 빗금 영역을 확인하거나 하루 한도를 늘려 주세요.`]);
   } else if (N < M.Nmin) {
     state.fail = true;
     msgs.unshift(['err', `구역 수 N=${N}은 하한 ${M.Nmin}보다 작습니다. 총 ${f1(M.C)} ㎥를 하루 ${inp.P} ㎥로 치려면 최소 ${M.Nmin}구역이 필요합니다.`]);
@@ -1545,14 +1789,15 @@ function compute() {
     if (!R.sols.length) {
       state.fail = true;
       const why = [];
-      if (R.overP) why.push(`${R.overP}개는 어떤 구역이 하루 한도 ${inp.P} ㎥를 넘었고`);
-      if (R.bentN) why.push(`${R.bentN}개는 한도는 지켰지만 경계가 보·기둥 위가 아닌 곳에서 꺾여(규칙 3) 제외됐습니다`);
-      msgs.unshift(['err', `${N}구역으로 규칙 1~6을 모두 지키는 배정을 찾지 못했습니다. 시도한 ${R.tried}개 배정 중 ${why.join(', ')}. 구역 수를 늘리면 선택지가 넓어집니다. <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
+      if (R.overP) why.push(`${R.overP}개는 하루 한도(${inp.P} ㎥)를 넘었고`);
+      if (R.bentN) why.push(`${R.bentN}개는 경계가 보·기둥이 아닌 곳에서 꺾였습니다(규칙 3)`);
+      const whyTxt = why.length ? ` 검토한 안 가운데 ${why.join(', ')}.` : '';
+      msgs.unshift(['err', `${N}구역으로는 규칙을 모두 지키는 구획안을 찾지 못했습니다.${whyTxt} 구역 수를 늘리면 선택지가 넓어집니다. <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
     } else {
       state.R = R;
       const s = R.sols[0];
-      msgs.unshift(['ok', `${N}구역(${N}일)으로 규칙 1~6을 모두 지키는 타설 방법 후보 ${R.sols.length}개를 찾았습니다. 추천 1번: 가장 큰 구역 ${f1(s.maxVol)} ㎥ / 하루 한도 ${inp.P} ㎥, 최대 편차 ${(s.maxDev * 100).toFixed(1)}%.`]);
-      if (R.sols.length < 10) msgs.push(['warn', `${N}구역으로 규칙을 모두 지키면서 서로 다른 배정은 ${R.sols.length}개입니다. 더 많은 선택지를 보려면 구역 수를 늘려 보세요. <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
+      msgs.unshift(['ok', `${N}구역(${N}일) 기준으로 구획안 ${R.sols.length}개를 찾았습니다. 추천안은 가장 큰 구역이 ${f1(s.maxVol)} ㎥(하루 한도 ${inp.P} ㎥)이고, 구역 간 물량 차이는 최대 ${(s.maxDev * 100).toFixed(1)}%입니다.`]);
+      if (R.sols.length < 10) msgs.push(['warn', `이 조건에서는 규칙을 모두 지키는 구획안이 ${R.sols.length}개뿐이라, ${R.sols.length === 1 ? '그 1개만' : `가능한 ${R.sols.length}개를 모두`} 보여드립니다. 구역 수를 늘리면 선택지가 넓어집니다. <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
     }
   }
   if (!M.Cgiven) msgs.push(['warn', `총 타설량 C를 비워 슬래브 면적 × 두께(${f1(M.totalArea)} ㎡ × ${inp.t} m = ${f1(M.C)} ㎥)로 계산했습니다. 보 물량은 빠져 있습니다.`]);
@@ -1593,7 +1838,7 @@ function renderAll(fresh) {
     $('#zoneTable').innerHTML = `<thead><tr><th>구역</th><th>타설량 (㎥)</th><th>면적 (㎡)</th><th>한도 대비</th><th>구역 둘레 이음 (m)</th></tr></thead><tbody>` +
       sol.vol.map((v, k) => `<tr><td><span class="sw" style="background:${zColor(k)}"></span>C${k + 1}</td><td>${f1(v)}</td><td>${f1(sol.area[k])}</td><td class="${v > inp.P ? 'over' : ''}">${(v / inp.P * 100).toFixed(0)}%</td><td>${f1(sol.joint[k])}</td></tr>`).join('') +
       `<tr><td><b>합계</b></td><td><b>${f1(sol.vol.reduce((a, b) => a + b, 0))}</b></td><td>${f1(M.totalArea)}</td><td></td><td>${f1(sol.total)} <small>(중복 제외)</small></td></tr></tbody>`;
-    $('#candCount').textContent = `${state.R.sols.length}개`;
+    $('#candCount').textContent = state.R.sols.length < 10 ? `${state.R.sols.length}개 (가능한 안 전부)` : '10개';
     $('#cands').innerHTML = state.R.sols.map((s, i) => `<button type="button" class="cand" data-i="${i}" aria-pressed="${i === state.sel}">
         <span class="ct">후보 ${i + 1}${i === 0 ? ' <small>추천</small>' : ''}<small>${s.N}구역</small></span>
         ${drawMini(M, s)}
@@ -1610,14 +1855,14 @@ function renderAll(fresh) {
 }
 
 function drawSVG(M, sol) {
-  const P = M.poly, xs0 = Math.min(...P.map(p => p[0])), xs1 = Math.max(...P.map(p => p[0])), ys0 = Math.min(...P.map(p => p[1])), ys1 = Math.max(...P.map(p => p[1]));
+  const P = (M.polys || [M.poly]).flat(), xs0 = Math.min(...P.map(p => p[0])), xs1 = Math.max(...P.map(p => p[0])), ys0 = Math.min(...P.map(p => p[1])), ys1 = Math.max(...P.map(p => p[1]));
   const span = Math.max(xs1 - xs0, ys1 - ys0), pad = span * 0.09 + 1.2, fs = Math.max(0.35, span / 42);
   const base = [xs0 - pad, -(ys1 + pad), xs1 - xs0 + 2 * pad, ys1 - ys0 + 2 * pad];
   state.baseVB = base;
   const vb = state.view || base;
   const Y = y => -y, o = [];
   const nsw = 'vector-effect="non-scaling-stroke"';
-  o.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb.map(v => v.toFixed(3)).join(' ')}" role="img" aria-label="타설 구획 평면도" font-family="IBM Plex Sans KR, Malgun Gothic, sans-serif">`);
+  o.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb.map(v => v.toFixed(3)).join(' ')}" role="img" aria-label="타설 구획 평면도" letter-spacing="0" font-family="Noto Sans KR, Apple SD Gothic Neo, Malgun Gothic, sans-serif">`);
   o.push(`<defs><pattern id="hatch" width="${fs}" height="${fs}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="${fs}" height="${fs}" fill="#F6D2CF"/><line x1="0" y1="0" x2="0" y2="${fs}" stroke="#C8423B" stroke-width="${fs * 0.25}"/></pattern></defs>`);
   // 그리드 축
   const ax = M.xs.map((x, i) => [x, 'X' + (i + 1)]), ay = M.ys.map((y, i) => [y, 'Y' + (i + 1)]);
@@ -1658,7 +1903,7 @@ function drawSVG(M, sol) {
   for (const r of M.openings) o.push(`<rect x="${r[0]}" y="${Y(r[3])}" width="${r[2] - r[0]}" height="${r[3] - r[1]}" fill="var(--sheet)" stroke="var(--ink)" stroke-width="1" ${nsw}/><path d="M${r[0]} ${Y(r[1])}L${r[2]} ${Y(r[3])}M${r[0]} ${Y(r[3])}L${r[2]} ${Y(r[1])}" stroke="var(--muted)" stroke-width="0.7" ${nsw}/>`);
   for (const r of M.walls) o.push(`<rect x="${r[0]}" y="${Y(r[3])}" width="${r[2] - r[0]}" height="${r[3] - r[1]}" fill="var(--wall)" stroke="var(--wall)" stroke-width="1" ${nsw}/>`);
   // 슬래브 외곽
-  o.push(`<polygon points="${P.map(p => p[0] + ',' + Y(p[1])).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="1.6" ${nsw}/>`);
+  for (const ring of (M.polys || [M.poly])) o.push(`<polygon points="${ring.map(p => p[0] + ',' + Y(p[1])).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="1.6" ${nsw}/>`);
   // 최소 타설 단위 경계
   if (layerOn('units')) for (const e of M.edges) if (e.A >= 0 && unitOf[e.A] !== unitOf[e.B])
     o.push(`<line x1="${e.x1}" y1="${Y(e.y1)}" x2="${e.x2}" y2="${Y(e.y2)}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 2" ${nsw}/>`);
@@ -1688,9 +1933,9 @@ function drawSVG(M, sol) {
       const gx = ax2 / ar, gy = ay2 / ar; let best = null, bd = Infinity;
       for (const c of cells) { const i = c % nx, j = Math.floor(c / nx), cx = (X[i] + X[i + 1]) / 2, cy = (YY[j] + YY[j + 1]) / 2, a = (X[i + 1] - X[i]) * (YY[j + 1] - YY[j]); const d = Math.hypot(cx - gx, cy - gy) - Math.sqrt(a) * 0.6; if (d < bd) { bd = d; best = [cx, cy]; } }
       if (!best) continue;
-      const halo = `paint-order="stroke" stroke="#FFFFFF" stroke-width="${fs * 0.28}" stroke-linejoin="round"`;
-      o.push(`<text x="${best[0]}" y="${Y(best[1]) - fs * 0.15}" font-size="${fs * 1.6}" font-weight="700" text-anchor="middle" fill="#1D2A30" ${halo}>C${k + 1}</text>`);
-      o.push(`<text x="${best[0]}" y="${Y(best[1]) + fs * 1.25}" font-size="${fs * 0.95}" text-anchor="middle" fill="#1D2A30" ${halo}>${f1(sol.vol[k])} ㎥</text>`);
+      const halo = `paint-order="stroke" stroke="#FFFFFF" stroke-opacity=".85" stroke-width="${fs * 0.12}" stroke-linejoin="round"`;
+      o.push(`<text x="${best[0]}" y="${Y(best[1]) - fs * 0.15}" font-size="${fs * 1.45}" font-weight="700" text-anchor="middle" fill="#16191C" ${halo}>C${k + 1}</text>`);
+      o.push(`<text x="${best[0]}" y="${Y(best[1]) + fs * 1.3}" font-size="${fs * 1.0}" font-weight="600" text-anchor="middle" fill="#16191C" ${halo}>${f1(sol.vol[k])} ㎥</text>`);
     }
   }
   o.push('</svg>');
@@ -1728,7 +1973,7 @@ function renderBasis(M) {
 }
 
 function drawMini(M, sol) {
-  const P = M.poly, x0 = Math.min(...P.map(p => p[0])), x1 = Math.max(...P.map(p => p[0])), y0 = Math.min(...P.map(p => p[1])), y1 = Math.max(...P.map(p => p[1]));
+  const P = (M.polys || [M.poly]).flat(), x0 = Math.min(...P.map(p => p[0])), x1 = Math.max(...P.map(p => p[0])), y0 = Math.min(...P.map(p => p[1])), y1 = Math.max(...P.map(p => p[1]));
   const w = x1 - x0, h = y1 - y0, pad = Math.max(w, h) * 0.04;
   // 4:3 틀 안에 가운데 정렬
   let vw = w + 2 * pad, vh = h + 2 * pad; if (vw / vh > 4 / 3) vh = vw * 3 / 4; else vw = vh * 4 / 3;
@@ -1750,7 +1995,8 @@ function drawMini(M, sol) {
   let d = '';
   for (const e of M.edges) if (e.A >= 0 && sol.z[unitOf[e.A]] !== sol.z[unitOf[e.B]]) d += `M${e.x1} ${-e.y1}L${e.x2} ${-e.y2}`;
   o.push(`<path d="${d}" stroke="#1D2A30" stroke-width="1.8" fill="none" stroke-linecap="square" ${nsw}/>`);
-  o.push(`<polygon points="${P.map(p => p[0] + ',' + (-p[1])).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="1" ${nsw}/></svg>`);
+  for (const ring of (M.polys || [M.poly])) o.push(`<polygon points="${ring.map(p => p[0] + ',' + (-p[1])).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="1" ${nsw}/>`);
+  o.push('</svg>');
   return o.join('');
 }
 
@@ -1816,7 +2062,7 @@ function csvText() {
 }
 function inputJSON() {
   const { inp } = readInputs();
-  const o = { project: inp.project, floor: inp.floor, slab: inp.slab, t: inp.t, C: isFinite(inp.C) ? inp.C : null, columns: inp.columns, beams: inp.beams, walls: inp.walls, openings: inp.openings, P: inp.P, N: isFinite(inp.N) ? inp.N : null, ratio: $('#ratio').value, mult: inp.mult, defW: inp.defW, minCut: inp.minCut, cantMin: inp.cantMin, gridTol: inp.gridTol, minWallT: inp.minWallT, cantExt: inp.cantExt };
+  const o = { project: inp.project, floor: inp.floor, slab: inp.slab, slabs: inp.slabs, t: inp.t, C: isFinite(inp.C) ? inp.C : null, columns: inp.columns, beams: inp.beams, walls: inp.walls, openings: inp.openings, P: inp.P, N: isFinite(inp.N) ? inp.N : null, ratio: $('#ratio').value, mult: inp.mult, defW: inp.defW, minCut: inp.minCut, cantMin: inp.cantMin, gridTol: inp.gridTol, minWallT: inp.minWallT, cantExt: inp.cantExt };
   return JSON.stringify(o, null, 1);
 }
 function download(name, text, type) {
@@ -1878,11 +2124,22 @@ function handleFile(f) {
     ifcStatus(`Revit 원본 파일(.rvt)은 Autodesk 전용 형식이라 브라우저에서 열 수 없습니다. Revit에서 IFC로 한 번 저장해 올려주세요.<ol><li>Revit에서 모델 열기</li><li>파일 → 내보내기 → IFC</li><li>IFC 버전은 기본값(IFC 2x3 또는 IFC4) 그대로 → 내보내기</li><li>저장된 .ifc 파일을 여기에 올리기</li></ol>`, 'err');
     return;
   }
+  if (/\.(ifczip|zip)$/i.test(f.name)) {
+    ifcStatus('압축된 IFC(.ifczip/.zip)는 바로 읽을 수 없습니다. 압축을 풀어 나온 .ifc 파일을 올려주세요. Revit에서 내보낼 때 "IFC 압축" 옵션을 끄면 처음부터 .ifc로 저장됩니다.', 'err');
+    return;
+  }
+  if (/\.ifcxml$/i.test(f.name)) { ifcStatus('ifcXML 형식은 지원하지 않습니다. 일반 .ifc(STEP) 형식으로 내보내 주세요.', 'err'); return; }
+  if (f.size > 400 * 1024 * 1024) { ifcStatus(`파일이 너무 큽니다(${(f.size / 1048576).toFixed(0)} MB). 구획할 층만 보이게 한 뷰로 IFC를 내보내면 크기가 크게 줄어듭니다.`, 'err'); return; }
   const r = new FileReader();
-  r.onload = () => loadIFCText(r.result, f.name);
+  r.onload = () => {
+    // UTF-8로 먼저 읽고, 깨지는 글자가 나오면 ISO-8859-1(IFC 표준 인코딩)로 다시 읽는다
+    let text = new TextDecoder('utf-8').decode(r.result);
+    if (text.indexOf('\uFFFD') >= 0) text = new TextDecoder('iso-8859-1').decode(r.result);
+    loadIFCText(text, f.name);
+  };
   r.onerror = () => ifcStatus('파일을 읽지 못했습니다.', 'err');
   ifcStatus('파일을 여는 중…');
-  r.readAsText(f, 'iso-8859-1');
+  r.readAsArrayBuffer(f);
 }
 $('#ifcFile').addEventListener('change', e => handleFile(e.target.files[0]));
 const drop = $('#drop');
@@ -1894,7 +2151,7 @@ $('#ifcRun').addEventListener('click', () => {
   if (!IFCM) return;
   try {
     const r = IFCM.extract(+$('#storey').value, { minWallT: num('minWallT') > 0 ? num('minWallT') : 0.2 });
-    fill({ project: r.project, floor: r.floor, slab: r.slab, t: r.t, C: r.C, columns: r.columns, beams: r.beams, walls: r.walls, openings: r.openings });
+    fill({ project: r.project, floor: r.floor, slab: r.slab, slabs: r.slabs, t: r.t, C: r.C, columns: r.columns, beams: r.beams, walls: r.walls, openings: r.openings });
     ifcStatus(`${esc(r.floor)}: 기둥 ${r.columns.length}, 보 ${r.beams.length}, 벽 ${r.walls.length}, 개구부 ${r.openings.length}개를 찾았습니다. 타설량 ${f1(r.info.slabVol)}(슬래브) + ${f1(r.info.beamVol)}(슬래브 아래 보) = ${f1(r.C)} ㎥.` + (r.W.length ? '<br>' + r.W.map(esc).join('<br>') : ''), 'ok');
     run();
   } catch (e) { ifcStatus(esc(e.message), 'err'); }
