@@ -200,9 +200,67 @@ h3{font-size:16px;font-weight:700;margin:2px 0 4px}
 .exports{display:flex;flex-wrap:wrap;gap:8px}
 .exports textarea{min-height:110px;margin-top:8px}
 .foot{font-size:12px;color:var(--muted);margin-top:14px;max-width:78ch;line-height:1.6}
+
+/* ===== 단계별 화면 ===== */
+[hidden]{display:none!important}
+body[data-stage="start"] .top p,body[data-stage="pick"] .top p{display:none}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:16px;box-shadow:var(--shadow);padding:18px}
+.step-h{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.step-h h2{font-size:17px;font-weight:700}
+.step-h .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:13px;font-weight:700}
+.step-desc{margin:0 0 12px}
+.intro{padding:6px 2px 4px}
+.intro h2{font-size:clamp(20px,2.6vw,26px);font-weight:700;letter-spacing:-.03em;line-height:1.35;margin-bottom:14px}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;counter-reset:s}
+.steps li{counter-increment:s;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:12px 12px 12px 42px;position:relative;display:flex;flex-direction:column;gap:2px}
+.steps li::before{content:counter(s);position:absolute;left:12px;top:12px;width:22px;height:22px;border-radius:8px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700}
+.steps b{font-size:14px}
+.steps span{font-size:12px;color:var(--muted)}
+@media (max-width:560px){.steps{grid-template-columns:1fr}}
+.file-chip{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--field);border:1px solid var(--rule);border-radius:12px;padding:10px 12px}
+.file-name{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-chip .link{margin:0;padding:0;font-size:13px;font-weight:600;color:var(--accent);cursor:pointer;white-space:nowrap}
+#ifcRun{margin-top:14px;padding:14px 16px;font-size:15px}
+details.more .actions{position:static;background:none;padding:12px 0 0;border:0}
+details.more fieldset{box-shadow:none;margin-top:10px}
+
+/* 1) 시작: 가운데 한 줄, 결과 영역 숨김 */
+body[data-stage="start"] .layout,body[data-stage="pick"] .layout{grid-template-columns:minmax(0,600px);justify-content:center;padding-top:36px}
+body[data-stage="start"] .result,body[data-stage="pick"] .result{display:none}
+body[data-stage="start"] #stepCond{display:none}
+body[data-stage="start"] .panel > details:not(#manual){display:none}
+body[data-stage="start"] .drop{padding:44px 12px}
+body[data-stage="start"] .drop-main{font-size:18px}
+/* 2) 층 선택: 파일 카드는 작게, 조건 카드 강조 */
+body[data-stage="pick"] .intro,body[data-stage="result"] .intro{display:none}
+body[data-stage="pick"] .drop,body[data-stage="result"] .drop{display:none}
+body[data-stage="pick"] #stepFile .step-desc,body[data-stage="result"] #stepFile .step-desc{display:none}
+body[data-stage="pick"] #stepCond{border:2px solid var(--accent);padding:17px}
+body[data-stage="pick"] .panel > details:not(#manual){display:none}
+/* 3) 결과: 왼쪽은 좁은 설정 막대, 오른쪽이 결과 */
+body[data-stage="result"] .layout{grid-template-columns:minmax(280px,330px) minmax(0,1fr)}
+@media (max-width:980px){body[data-stage="result"] .layout{grid-template-columns:1fr}}
+body[data-stage="result"] #ifcSample{display:none}
+body[data-stage="result"] .step-h h2{font-size:15px}
+body[data-stage="result"] .card{padding:14px}
+
+/* 결과 머리글 */
+.res-head{background:var(--card);border:1px solid var(--rule);border-radius:16px;box-shadow:var(--shadow);padding:16px 18px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 20px}
+.res-head .rt small{display:block;color:var(--muted);font-size:12.5px;font-weight:500}
+.res-head .rt h2{font-size:22px;font-weight:700;letter-spacing:-.03em}
+.res-head .rt h2 em{font-style:normal;color:var(--accent)}
+.res-info{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.res-info span{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--field);border:1px solid var(--rule);color:var(--muted)}
+body[data-stage="result"] .ifc-status.ok{display:none}
+body[data-stage="pick"] #ifcSample{display:none}
+.res-kpis{display:flex;flex-wrap:wrap;gap:8px}
+.res-kpis div{background:var(--field);border-radius:12px;padding:8px 12px;min-width:88px}
+@media (max-width:560px){.res-kpis{display:grid;grid-template-columns:1fr 1fr;width:100%}}
+.res-kpis dt{font-size:11.5px;color:var(--muted)}
+.res-kpis dd{margin:1px 0 0;font-size:16px;font-weight:700}
 </style>
 </head>
-<body>
+<body data-stage="start">
 <header class="top">
   <div>
     <h1>타설구획 자동 분할</h1>
@@ -213,25 +271,49 @@ h3{font-size:16px;font-weight:700;margin:2px 0 4px}
 
 <div class="layout">
 <aside class="panel">
-  <section class="upload" aria-labelledby="upTitle">
-    <h2 id="upTitle">Revit 모델 올리기</h2>
-    <p class="hint">Revit에서 <b>파일 → 내보내기 → IFC</b>로 저장한 파일을 올리세요. 파일은 이 브라우저 안에서만 읽고 어디에도 전송하지 않습니다.</p>
+  <div class="intro" id="intro">
+    <h2>IFC 모델로 콘크리트 타설구획을<br>자동으로 나눕니다</h2>
+    <ol class="steps">
+      <li><b>모델 올리기</b><span>Revit에서 내보낸 .ifc</span></li>
+      <li><b>층·하루 타설량</b><span>구획할 층과 1일 한도</span></li>
+      <li><b>구획안 확인</b><span>최단 일수 계획 최대 10개</span></li>
+    </ol>
+  </div>
+
+  <section class="card step" id="stepFile" aria-labelledby="upTitle">
+    <div class="step-h"><span class="n">1</span><h2 id="upTitle">모델 올리기</h2></div>
+    <p class="hint step-desc">Revit에서 <b>파일 → 내보내기 → IFC</b>로 저장한 파일을 올리세요. 파일은 이 브라우저 안에서만 읽고 어디에도 전송하지 않습니다.</p>
     <label class="drop" id="drop" for="ifcFile">
       <span class="drop-main">IFC 파일 선택</span>
       <span class="drop-sub">또는 여기로 끌어다 놓기 (.ifc)</span>
     </label>
     <input id="ifcFile" type="file" accept=".ifc,.rvt" class="vh">
+    <div class="file-chip" id="fileChip" hidden>
+      <span class="file-name" id="fileName"></span>
+      <label for="ifcFile" class="link">다른 파일</label>
+    </div>
     <div id="ifcStatus" class="ifc-status" role="status"></div>
+    <button type="button" class="link" id="ifcSample">예제 IFC로 해보기</button>
+  </section>
+
+  <section class="card step" id="stepCond" aria-labelledby="condTitle">
+    <div class="step-h"><span class="n">2</span><h2 id="condTitle">층과 조건 정하기</h2></div>
     <div id="ifcPick" hidden>
       <label for="storey"><b>구획할 층</b></label>
       <select id="storey"></select>
-      <button type="button" class="primary wide" id="ifcRun">이 층 구획하기</button>
     </div>
-    <button type="button" class="link" id="ifcSample">예제 IFC로 해보기</button>
+    <div class="row2">
+      <div><label for="P"><b>1일 최대 타설량</b> (㎥)</label><input id="P" type="number" step="1" min="1" placeholder="예: 120"></div>
+      <div><label for="N"><b>구역 수</b> (선택)</label><input id="N" type="number" step="1" min="1" placeholder="자동"></div>
+    </div>
+    <p class="hint" id="nHint">구역 수를 비워 두면 규칙을 지키는 가장 짧은 공기를 자동으로 찾습니다.</p>
+    <button type="button" class="primary wide" id="ifcRun">구획하기</button>
   </section>
-  <p class="or">불러온 값은 아래에서 고칠 수 있습니다. 좌표를 직접 넣어도 됩니다.</p>
-  <p class="form-note" id="formNote">IFC를 올리거나 [예제 불러오기]를 누르면 아래 칸이 채워집니다.</p>
-  <fieldset>
+
+  <details class="more" id="manual">
+    <summary>모델 값 확인·직접 입력</summary>
+    <p class="form-note" id="formNote">IFC를 올리거나 [예제 불러오기]를 누르면 아래 칸이 채워집니다.</p>
+    <fieldset>
     <legend><span class="n">1</span>슬래브</legend>
     <div class="row2">
       <div><label for="project">프로젝트</label><input id="project" type="text"></div>
@@ -246,14 +328,14 @@ h3{font-size:16px;font-weight:700;margin:2px 0 4px}
     <p class="hint">C를 넣으면 각 구역 타설량은 면적 비율로 나눠 계산합니다(보 물량 포함 값을 넣으면 보도 반영).</p>
   </fieldset>
 
-  <fieldset>
+    <fieldset>
     <legend><span class="n">2</span>기둥</legend>
     <label for="columns"><b>기둥 중심점</b> — 한 줄에 x, y</label>
     <textarea id="columns" spellcheck="false"></textarea>
     <p class="hint">같은 선 위 이웃 기둥 사이에는 큰보가 있다고 보고 자동으로 만듭니다.</p>
   </fieldset>
 
-  <fieldset>
+    <fieldset>
     <legend><span class="n">3</span>작은보 · 벽 · 개구부</legend>
     <label for="beams"><b>보</b> — x1, y1, x2, y2, 폭</label>
     <textarea id="beams" spellcheck="false" placeholder="비워도 됩니다"></textarea>
@@ -263,14 +345,11 @@ h3{font-size:16px;font-weight:700;margin:2px 0 4px}
     <textarea id="openings" spellcheck="false" placeholder="비워도 됩니다"></textarea>
   </fieldset>
 
-  <fieldset>
-    <legend><span class="n">4</span>현장 조건</legend>
-    <div class="row2">
-      <div><label for="P"><b>1일 최대 타설량 P</b> (㎥)</label><input id="P" type="number" step="1" min="1" placeholder="예: 120"></div>
-      <div><label for="N"><b>구역 수 N</b> (선택)</label><input id="N" type="number" step="1" min="1" placeholder="비우면 자동(최단 일수)"></div>
+    <div class="actions">
+      <button type="button" class="primary" id="run">입력값으로 다시 계산</button>
+      <button type="button" id="example">예제 불러오기</button>
     </div>
-    <p class="hint" id="nHint">비워 두면 규칙을 지키는 가장 적은 구역 수(가장 짧은 공기)를 자동으로 찾습니다. 원하는 일수가 있을 때만 입력하세요.</p>
-  </fieldset>
+  </details>
 
   <details>
     <summary>규칙 설정값</summary>
@@ -308,21 +387,18 @@ h3{font-size:16px;font-weight:700;margin:2px 0 4px}
     </ol>
   </details>
 
-  <div class="actions">
-    <button type="button" class="primary" id="run">구획 나누기</button>
-    <button type="button" id="example">예제 불러오기</button>
-  </div>
 </aside>
 
 <main class="result" id="result" aria-live="polite">
   <div class="empty" id="empty">
-    <p>왼쪽에서 <b>IFC 파일</b>을 올리거나 <b>예제 IFC로 해보기</b>를 누르면 결과가 여기에 나옵니다.</p>
+    <p>구획 결과가 여기에 나옵니다.</p>
   </div>
   <div id="out" hidden>
+    <div class="res-head" id="resHead"></div>
     <div id="msgs"></div>
     <div id="altBlock">
       <h3 class="cand-h">타설 방법 후보 <span id="candCount"></span></h3>
-      <p class="hint">정한 구역 수 안에서 규칙 1~6을 모두 지키는 안만, 추천순으로 보여줍니다. 후보를 누르면 아래에 큰 도면과 구역별 타설량이 나옵니다.</p>
+      <p class="hint">규칙 1~6을 모두 지키는 안만 추천순으로 보여줍니다. 누르면 아래에 큰 도면과 구역별 타설량이 나옵니다.</p>
       <div class="cands" id="cands"></div>
       <div class="tablewrap"><table class="alts" id="altTable"></table></div>
     </div>
@@ -1862,16 +1938,16 @@ function showMsgs(list) {
 }
 
 function run() {
-  const btn = $('#run'); btn.disabled = true; btn.textContent = num('N') > 0 ? '계산 중…' : '가장 빠른 계획 찾는 중…';
+  const btn = $('#run'), btn2 = $('#ifcRun'); btn.dataset.label = btn.dataset.label || btn.textContent; btn2.dataset.label = btn2.dataset.label || btn2.textContent; btn.disabled = true; btn2.disabled = true; btn.textContent = btn2.textContent = num('N') > 0 ? '계산 중…' : '가장 빠른 계획 찾는 중…';
   setTimeout(() => {
     try { compute(); } catch (e) { $('#empty').hidden = true; $('#out').hidden = false; showMsgs([['err', '계산 중 오류: ' + esc(e.message)]]); console.error(e); }
-    btn.disabled = false; btn.textContent = '구획 나누기';
+    btn.disabled = false; btn.textContent = btn.dataset.label; btn2.disabled = false; btn2.textContent = btn2.dataset.label;
   }, 30);
 }
 
 function compute() {
   const { inp, errs } = readInputs();
-  $('#empty').hidden = true; $('#out').hidden = false;
+  setStage('result'); $('#empty').hidden = true; $('#out').hidden = false;
   if (errs.length) { showMsgs(errs.map(e => ['err', esc(e)])); $('#sheet').hidden = true; $('#zoneBlock').hidden = $('#altBlock').hidden = true; return; }
   const M = analyze(inp);
   if (M.E.length) { showMsgs(M.E.map(e => ['err', esc(e)])); $('#sheet').hidden = true; $('#zoneBlock').hidden = $('#altBlock').hidden = true; return; }
@@ -1947,11 +2023,24 @@ function compute() {
     state.autoOn = [];
   }
   renderAll(true);
-  if (window.matchMedia('(max-width:920px)').matches) $('#result').scrollIntoView({ behavior: 'smooth' });
+  setStage('result');
+  if (window.matchMedia('(max-width:980px)').matches) $('#result').scrollIntoView({ behavior: 'smooth' }); else window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function layerOn(n) { return document.querySelector(`[data-layer=${n}]`).checked; }
 
+function setStage(s) { document.body.dataset.stage = s; }
+function renderHead() {
+  const M = state.M, inp = state.inp, sol = state.R ? state.R.sols[state.sel] : null;
+  if (!M || !inp) { $('#resHead').innerHTML = ''; return; }
+  const title = sol ? `<em>${sol.N}일</em> 타설 계획 · ${sol.N}개 구역` : '구획안을 만들지 못했습니다';
+  const kpi = [['총 타설량', `${f1(M.C)} ㎥`], ['1일 한도', `${inp.P} ㎥`]];
+  if (sol) kpi.push(['구획안', `${state.R.sols.length}개`], ['가장 큰 구역', `${f1(sol.maxVol)} ㎥`]);
+  const I = state.ifcInfo;
+  const short = w => w.replace(/모델이 X·Y축에서 (-?[\d.]+)° 돌아가 있어.*/, '$1° 회전 보정').replace(/이 층의 슬래브 (\d+)개를 한 바닥으로 합쳐 계산했습니다\./, '슬래브 $1개 합침').replace(/두께 ([\d.]+) m 미만인 칸막이벽 (\d+)개는 제외했습니다.*/, '칸막이벽 $2개 제외').replace(/높이가 다른 슬래브 (\d+)개.*/, '높이 다른 슬래브 $1개 제외');
+  const chips = I ? [`기둥 ${I.cols}`, `보 ${I.beams}`, `구조벽 ${I.walls}`, `개구부 ${I.open}`].concat((I.W || []).map(short).filter(w => w.length < 24)) : [];
+  $('#resHead').innerHTML = `<div class="rt"><small>${esc(inp.project || '프로젝트')} · ${esc(inp.floor || '층')}</small><h2>${title}</h2>${chips.length ? `<div class="res-info">${chips.map(c => `<span>${esc(c)}</span>`).join('')}</div>` : ''}</div><dl class="res-kpis">${kpi.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('')}</dl>`;
+}
 function renderAll(fresh) {
   const M = state.M; if (!M) return;
   const sol = state.R ? state.R.sols[state.sel] : null;
@@ -1994,6 +2083,7 @@ function renderAll(fresh) {
   }
   $('#detailTitle').hidden = !sol;
   renderBasis(M);
+  renderHead();
   $('#exportText').value = csvText();
 }
 
@@ -2218,7 +2308,7 @@ function download(name, text, type) {
 
 $('#run').addEventListener('click', run);
 $('#msgs').addEventListener('click', e => { const b = e.target.closest('.inline-btn'); if (!b) return; if (b.dataset.time) state.searchTime = +b.dataset.time; else $('#N').value = b.dataset.n; run(); });
-$('#example').addEventListener('click', () => { fill(EXAMPLE); $('#formNote').textContent = '예제 값(가상의 보 구조 건물)입니다.'; run(); });
+$('#example').addEventListener('click', () => { state.ifcInfo = null; fill(EXAMPLE); $('#formNote').textContent = '예제 값(가상의 보 구조 건물)입니다.'; run(); });
 document.querySelectorAll('[data-layer]').forEach(c => c.addEventListener('change', () => renderAll(false)));
 $('#cands').addEventListener('click', e => {
   const b = e.target.closest('.cand'); if (!b) return;
@@ -2265,8 +2355,10 @@ function loadIFCText(text, name) {
       const best = cand.slice().sort((a, b) => (b.count.beam - a.count.beam) || (b.elev - a.elev))[0];
       sel.value = best.id;
       $('#ifcPick').hidden = false;
+      $('#fileName').textContent = name; $('#fileChip').hidden = false;
+      setStage('pick');
       clearModelFields(`${name} — 층을 고르고 [이 층 구획하기]를 누르면 여기에 채워집니다.`);
-      ifcStatus(`${esc(name)} — 객체 ${IFCM.count.toLocaleString()}개, 층 ${IFCM.storeys.length}개를 읽었습니다 (${((performance.now() - t0) / 1000).toFixed(1)}초). 층을 고르고 구획하세요.`, 'ok');
+      ifcStatus(`객체 ${IFCM.count.toLocaleString()}개, 층 ${IFCM.storeys.length}개를 읽었습니다. 아래에서 층을 고르세요.`, 'ok');
     } catch (e) { IFCM = null; ifcStatus('모델을 읽지 못했습니다: ' + esc(e.message), 'err'); }
   }, 30);
 }
@@ -2300,9 +2392,10 @@ const drop = $('#drop');
 drop.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
 $('#ifcSample').addEventListener('click', () => { if (!(num('P') > 0)) { $('#P').value = 35; } loadIFCText(SAMPLE_IFC, '예제_RC_업무시설.ifc'); });
 $('#ifcRun').addEventListener('click', () => {
-  if (!IFCM) return;
+  if (!IFCM || $('#ifcPick').hidden) { run(); return; }
   try {
     const r = IFCM.extract(+$('#storey').value, { minWallT: num('minWallT') > 0 ? num('minWallT') : 0.2 });
+    state.ifcInfo = { cols: r.columns.length, beams: r.beams.length, walls: r.walls.length, open: r.openings.length, W: r.W };
     fill({ project: r.project, floor: r.floor, slab: r.slab, slabs: r.slabs, t: r.t, C: r.C, columns: r.columns, beams: r.beams, walls: r.walls, openings: r.openings });
     ifcStatus(`${esc(r.floor)}: 기둥 ${r.columns.length}, 보 ${r.beams.length}, 벽 ${r.walls.length}, 개구부 ${r.openings.length}개를 찾았습니다. 타설량 ${f1(r.info.slabVol)}(슬래브) + ${f1(r.info.beamVol)}(슬래브 아래 보) = ${f1(r.C)} ㎥.` + (r.W.length ? '<br>' + r.W.map(esc).join('<br>') : ''), 'ok');
     $('#formNote').textContent = `${r.floor} 모델 값을 불러왔습니다.`;
