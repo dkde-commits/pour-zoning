@@ -343,11 +343,63 @@ body[data-stage="result"] .drawer-h{display:flex;align-items:center;justify-cont
 .dt-more{box-shadow:none;border-radius:12px;margin-top:10px;padding:10px 12px}
 .md-detail .foot{margin-top:12px}
 @media (max-width:980px){
-  .md{grid-template-columns:1fr}
+  .md{grid-template-columns:minmax(0,1fr)}
+  .md-list,.md-detail{min-width:0}
   .md-list{position:static;max-height:none}
   .md-list .cands{flex-direction:row;overflow-x:auto;padding-bottom:6px}
   .md-list .cand{width:250px}
 }
+
+/* ===== 글자 정리 v3 ===== */
+body[data-stage="result"] .spec{display:none}
+.res-head{gap:14px;padding:16px 20px}
+.rh-cond{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--ink)}
+.rh-cond i{font-style:normal;color:var(--muted);font-weight:400;margin:0 2px}
+.rh-main{align-items:flex-end}
+.rh-title{display:flex;align-items:center;gap:14px}
+.rh-days{display:flex;align-items:baseline;gap:2px;color:var(--accent);line-height:1}
+.rh-days b{font-size:56px;font-weight:800;letter-spacing:-.04em}
+.rh-days span{font-size:22px;font-weight:700}
+.rh-sub{display:flex;flex-direction:column;gap:4px}
+.rh-lbl{font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.02em}
+.rh-zones{font-size:13.5px;color:var(--muted);font-weight:500}
+.rh-fail{font-size:20px;font-weight:700;color:var(--ng)}
+.rh-badge{align-self:flex-start;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;margin-top:2px}
+.rh-badge.ok{background:var(--ok-soft);color:var(--ok)}
+.rh-badge.warn{background:var(--warn-soft);color:var(--warn)}
+.res-kpis div{min-width:104px;padding:10px 14px}
+.res-kpis dd{font-size:20px;letter-spacing:-.02em}
+.res-kpis dd small{font-size:12px;font-weight:600;color:var(--muted);margin-left:2px}
+.rh-act{display:flex;align-items:center;gap:8px;position:relative}
+.rh-act .warns{padding:6px 12px;border-radius:999px;background:var(--warn-soft)}
+.rh-act .warns summary{color:var(--warn);font-weight:700}
+.rh-act .warns[open]{position:absolute;right:0;top:44px;z-index:5;width:min(460px,86vw);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow)}
+.rh-foot .warns{display:inline-block;padding:4px 12px;border-radius:999px}
+.rh-foot .warns[open]{display:block;border-radius:12px;padding:10px 14px}
+.warns summary{font-size:13px}
+.warns summary::after{content:""}
+/* 카드 */
+.cand .ct{align-items:center;justify-content:flex-start;gap:6px}
+.rec{font-style:normal;font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:2px}
+.cand .ct small{margin-left:auto}
+.cand .cm{display:flex;gap:12px;color:var(--ink)}
+.cand .cm > span{display:flex;flex-direction:column;line-height:1.2}
+.cand .cm em{font-style:normal;font-size:11px;color:var(--muted);font-weight:500}
+.cand .cm u{text-decoration:none;font-size:11px;color:var(--muted);margin-left:1px}
+.cand .cm strong{font-size:16px;font-weight:700;white-space:nowrap}
+.md-list .cand{grid-template-areas:"svg ct" "svg cm";align-items:center;padding:10px}
+.md-list .cand[aria-pressed="true"]{padding:9px}
+.md-list .cand svg{width:72px}
+.md-list .cand{grid-template-columns:72px 1fr}
+.dt-head h3{display:flex;align-items:center}
+/* 구역표 */
+#zoneTable td small.day{font-size:11px;color:var(--muted);font-weight:500;margin-left:4px}
+#zoneTable .gauge{display:inline-block;width:56px;height:6px;border-radius:9px;background:var(--field);margin-right:8px;vertical-align:1px;overflow:hidden}
+#zoneTable .gauge i{display:block;height:100%;background:var(--accent);border-radius:9px}
+#zoneTable td.over .gauge i{background:var(--ng)}
+#zoneTable tr.sum td{font-weight:700;border-top:1px solid var(--rule)}
+#zoneTable tr.sum td:last-child{font-weight:500;color:var(--muted)}
+@media (max-width:560px){#zoneTable th:nth-child(3),#zoneTable td:nth-child(3){display:none}#zoneTable .gauge{width:34px;margin-right:6px}#zoneTable th,#zoneTable td{padding:10px 8px}.dt-head .layers label{padding:5px 9px;font-size:12px}.rh-days b{font-size:44px}.res-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%}.res-kpis div{min-width:0;padding:8px 10px}.res-kpis dd{font-size:17px}.res-kpis dt{font-size:11px}}
 </style>
 </head>
 <body data-stage="start">
@@ -397,7 +449,7 @@ body[data-stage="result"] .drawer-h{display:flex;align-items:center;justify-cont
       <div><label for="P"><b>1일 타설량</b> <span class="req">필수</span></label><input id="P" type="number" step="1" min="1" placeholder="㎥ (예: 120)" required aria-required="true" aria-describedby="pErr"><p class="field-err" id="pErr" hidden>하루 최대 타설량을 입력하세요.</p></div>
       <div><label for="N"><b>구역 수</b> (선택)</label><input id="N" type="number" step="1" min="1" placeholder="자동"></div>
     </div>
-    <p class="hint" id="nHint">구역 수를 비워 두면 규칙을 지키는 가장 짧은 공기를 자동으로 찾습니다.</p>
+    <p class="hint" id="nHint">구역 수는 비워 두면 최단 일수로 자동 계산합니다.</p>
     <button type="button" class="primary wide" id="ifcRun">구획하기</button>
   </section>
 
@@ -494,7 +546,7 @@ body[data-stage="result"] .drawer-h{display:flex;align-items:center;justify-cont
     <div id="msgs"></div>
     <div class="md">
       <section class="md-list" id="altBlock" aria-label="구획안 목록">
-        <div class="md-list-h"><h3 class="cand-h">구획안 <span id="candCount"></span></h3><span class="md-sub">추천순 · 눌러서 비교</span></div>
+        <div class="md-list-h"><h3 class="cand-h">구획안 <span id="candCount"></span></h3><span class="md-sub">추천순</span></div>
         <div class="cands" id="cands"></div>
         <div class="tablewrap" hidden><table class="alts" id="altTable"></table></div>
       </section>
@@ -503,9 +555,9 @@ body[data-stage="result"] .drawer-h{display:flex;align-items:center;justify-cont
           <h3 id="detailTitle">선택한 구획안</h3>
           <div class="layers" role="group" aria-label="도면 표시">
             <label><input type="checkbox" data-layer="zones" checked>구획</label>
-            <label><input type="checkbox" data-layer="cand">절단 가능 위치</label>
-            <label><input type="checkbox" data-layer="units">최소 타설 단위</label>
-            <label><input type="checkbox" data-layer="struct" checked>보·기둥</label>
+            <label title="규칙 1·2를 만족하는 절단 가능 위치"><input type="checkbox" data-layer="cand">절단선</label>
+            <label title="반드시 한 번에 쳐야 하는 덩어리"><input type="checkbox" data-layer="units">타설 단위</label>
+            <label><input type="checkbox" data-layer="struct" checked>구조</label>
             <span class="layer-note" id="layerNote"></span>
           </div>
         </div>
@@ -526,14 +578,13 @@ body[data-stage="result"] .drawer-h{display:flex;align-items:center;justify-cont
         </div>
         <div class="dt-zones" id="zoneBlock">
           <div class="tablewrap"><table id="zoneTable"></table></div>
-          <p class="hint">구역별 이음은 그 구역을 둘러싼 이음 길이라 이웃과 맞닿은 이음이 양쪽에 들어갑니다. 합계는 중복을 뺀 값입니다.</p>
         </div>
         <details class="dt-more">
           <summary>판정 근거</summary>
           <div class="basis tablewrap" id="basis" aria-label="판정 근거"></div>
         </details>
         <details class="dt-more">
-          <summary>내보내기 (CSV · SVG · JSON)</summary>
+          <summary>내보내기</summary>
           <div class="exports">
             <button type="button" id="dlCsv">구역표 CSV 저장</button>
             <button type="button" id="dlSvg">도면 SVG 저장</button>
@@ -542,7 +593,7 @@ body[data-stage="result"] .drawer-h{display:flex;align-items:center;justify-cont
           <label for="exportText">저장이 안 되는 환경에서는 아래 내용을 복사해 쓰세요.</label>
           <textarea id="exportText" readonly spellcheck="false"></textarea>
         </details>
-        <p class="foot">구역 타설량은 면적 비율 배분값이며, 이음 위치는 구조기술자 확인을 거쳐 확정하세요. 휠·두 손가락으로 도면을 확대하고 끌어서 이동할 수 있습니다.</p>
+        <p class="foot">타설량은 면적 비율 배분값입니다. 이음 위치는 구조기술자 확인 후 확정하세요.</p>
       </section>
     </div>
   </div>
@@ -2102,7 +2153,7 @@ function compute() {
   const msgs = M.W.map(w => ['warn', esc(w)]);
   const auto = !(isFinite(inp.N) && inp.N > 0);
   let N = auto ? Math.max(M.Nmin, M.comps.length) : Math.round(inp.N); state.N = N;
-  $('#nHint').textContent = `물량만 보면 최소 ${M.Nmin}구역(올림 ${f1(M.C)} ÷ ${inp.P}). 비워 두면 규칙까지 지키는 가장 적은 구역 수를 자동으로 찾습니다.`;
+  $('#nHint').textContent = `물량상 최소 ${M.Nmin}일. 비워 두면 규칙까지 지키는 최단 일수로 자동 계산합니다.`;
   const big = M.units[M.maxUnit];
   if (big.vol > inp.P + 1e-6) {
     state.fail = true;
@@ -2181,20 +2232,19 @@ function setStage(s) { document.body.dataset.stage = s; }
 function renderHead() {
   const M = state.M, inp = state.inp, sol = state.R ? state.R.sols[state.sel] : null;
   if (!M || !inp) { $('#resHead').innerHTML = ''; return; }
-  const bits = [];
-  if (state.fileName && state.ifcInfo) bits.push(['파일', state.fileName]);
-  bits.push(['층', inp.floor || '-'], ['1일 한도', `${inp.P} ㎥`], ['구역 수', state.auto ? '자동' : `${state.N}개`]);
-  const title = sol ? `<em>${sol.N}일</em> 타설 계획 · ${sol.N}개 구역` : '구획안을 만들지 못했습니다';
-  const kpi = [['총 타설량', `${f1(M.C)} ㎥`]];
-  if (sol) kpi.push(['가장 큰 구역', `${f1(sol.maxVol)} ㎥`], ['구역 간 차이', `${(sol.maxDev * 100).toFixed(0)}%`], ['구획안', `${state.R.sols.length}개`]);
+  const cond = [inp.floor || '층', `1일 ${inp.P} ㎥`, state.auto ? '구역 수 자동' : `${state.N}개 구역 지정`].map(esc).join('<i>·</i>');
+  let badge = '';
+  if (sol && state.auto) badge = sol.N > M.Nmin ? `<span class="rh-badge warn">규칙 때문에 최소보다 ${sol.N - M.Nmin}일 더</span>` : '<span class="rh-badge ok">물량상 최소 일수</span>';
   const q = state.quiet || [];
-  const warns = q.length ? `<details class="warns"><summary><span class="tag" style="background:var(--warn);color:#fff;font-size:11px;padding:1px 7px;border-radius:999px">주의</span>확인할 사항 ${q.length}건</summary><ul>${q.map(t => `<li>${t}</li>`).join('')}</ul></details>` : '';
-  const status = (state.okText || q.length) ? `<div class="rh-status">${state.okText ? `<span class="ok-dot" aria-hidden="true"></span><p>${state.okText}</p>` : ''}${warns}</div>` : '';
+  const warns = q.length ? `<details class="warns"><summary>주의 ${q.length}</summary><ul>${q.map(t => `<li>${t}</li>`).join('')}</ul></details>` : '';
+  const kpi = sol ? [['총 타설량', f1(M.C), '㎥'], ['가장 큰 구역', f1(sol.maxVol), '㎥'], ['구역 간 차이', (sol.maxDev * 100).toFixed(0), '%']] : [['총 타설량', f1(M.C), '㎥']];
   $('#resHead').innerHTML = `
-    <div class="rh-top"><div class="rb-info">${bits.map(([a, b]) => `<span><b>${a}</b>${esc(b)}</span>`).join('')}</div>
-      <button type="button" class="rb-btn" id="openDrawer">조건 바꾸기 · 모델 정보</button></div>
-    <div class="rh-main"><div class="rt"><small>${esc(inp.project || '프로젝트')} · ${esc(inp.floor || '층')}</small><h2>${title}</h2></div>
-      <dl class="res-kpis">${kpi.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('')}</dl></div>${status}`;
+    <div class="rh-top"><div class="rh-cond">${cond}</div>
+      <div class="rh-act">${warns}<button type="button" class="rb-btn" id="openDrawer">조건 바꾸기</button></div></div>
+    <div class="rh-main">
+      <div class="rh-title">${sol ? `<div class="rh-days"><b>${sol.N}</b><span>일</span></div><div class="rh-sub"><span class="rh-lbl">타설 계획</span><span class="rh-zones">${sol.N}개 구역 · 하루 1구역</span>${badge}</div>` : '<div class="rh-sub"><span class="rh-fail">구획안 없음</span></div>'}</div>
+      <dl class="res-kpis">${kpi.map(([a, b, c]) => `<div><dt>${a}</dt><dd>${b}<small>${c}</small></dd></div>`).join('')}</dl>
+    </div>`;
 }
 function renderModelCard() {
   const M = state.M, inp = state.inp; if (!M || !inp) { $('#modelCard').hidden = true; return; }
@@ -2256,19 +2306,18 @@ function renderAll(fresh) {
   $('#tbFacts').innerHTML = facts.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('');
   $('#zoneBlock').hidden = !sol; $('#altBlock').hidden = !sol;
   if (sol) {
-    $('#zoneTable').innerHTML = `<thead><tr><th>구역</th><th>타설량 (㎥)</th><th>면적 (㎡)</th><th>한도 대비</th><th>구역 둘레 이음 (m)</th></tr></thead><tbody>` +
-      sol.vol.map((v, k) => `<tr><td><span class="sw" style="background:${zColor(k)}"></span>C${k + 1}</td><td>${f1(v)}</td><td>${f1(sol.area[k])}</td><td class="${v > inp.P ? 'over' : ''}">${(v / inp.P * 100).toFixed(0)}%</td><td>${f1(sol.joint[k])}</td></tr>`).join('') +
-      `<tr><td><b>합계</b></td><td><b>${f1(sol.vol.reduce((a, b) => a + b, 0))}</b></td><td>${f1(M.totalArea)}</td><td></td><td>${f1(sol.total)} <small>(중복 제외)</small></td></tr></tbody>`;
-    $('#candCount').textContent = state.R.sols.length < 10 ? (state.Rinfo && state.Rinfo.timedOut ? `${state.R.sols.length}개 (제한 시간 내)` : `${state.R.sols.length}개 (가능한 안 전부)`) : '10개';
+    $('#zoneTable').innerHTML = `<thead><tr><th>구역</th><th>타설량</th><th>면적</th><th>한도 대비</th></tr></thead><tbody>` +
+      sol.vol.map((v, k) => `<tr><td><span class="sw" style="background:${zColor(k)}"></span>C${k + 1}</td><td>${f1(v)} ㎥</td><td>${Math.round(sol.area[k])} ㎡</td><td class="${v > inp.P ? 'over' : ''}"><span class="gauge"><i style="width:${Math.min(100, v / inp.P * 100)}%"></i></span>${(v / inp.P * 100).toFixed(0)}%</td></tr>`).join('') +
+      `<tr class="sum"><td>합계</td><td>${f1(sol.vol.reduce((a, b) => a + b, 0))} ㎥</td><td>${Math.round(M.totalArea)} ㎡</td><td>이음 ${f1(sol.total)} m</td></tr></tbody>`;
+    $('#candCount').textContent = `${state.R.sols.length}`;
     $('#cands').innerHTML = state.R.sols.map((s, i) => `<button type="button" class="cand" data-i="${i}" aria-pressed="${i === state.sel}">
-        <span class="ct">안 ${i + 1}${i === 0 ? ' <small>추천</small>' : ''}<small>${s.N}구역</small></span>
+        <span class="ct">안 ${i + 1}${i === 0 ? '<i class="rec">추천</i>' : ''}${state.auto ? '' : `<small>${s.N}구역</small>`}</span>
         ${drawMini(M, s)}
-        <span class="cm">최대 ${f1(s.maxVol)} ㎥ · 편차 ${(s.maxDev * 100).toFixed(0)}%<br>최소 ${f1(s.minVol)} ㎥ · 이음 ${f1(s.total)} m</span>
-        <span class="tags">${(s.tags || []).map(t => `<span class="${t.startsWith('타설') ? 'day' : ''}">${t}</span>`).join('')}</span>
+        <span class="cm"><span><em>최대</em><strong>${Math.round(s.maxVol)}<u>㎥</u></strong></span><span><em>차이</em><strong>${(s.maxDev * 100).toFixed(0)}<u>%</u></strong></span></span>
       </button>`).join('');
     $('#altTable').innerHTML = `<thead><tr><th>후보</th><th>구역(일)</th><th>최대 편차</th><th>최대 구역 (㎥)</th><th>최소 구역 (㎥)</th><th>총 이음 (m)</th></tr></thead><tbody>` +
       state.R.sols.map((s, i) => `<tr data-i="${i}" class="${i === state.sel ? 'sel' : ''}" tabindex="0"><td>${i + 1}${i === 0 ? ' 추천' : ''}</td><td>${s.N}</td><td>${(s.maxDev * 100).toFixed(1)}%</td><td>${f1(s.maxVol)}</td><td>${f1(s.minVol)}</td><td>${f1(s.total)}</td></tr>`).join('') + '</tbody>';
-    $('#detailTitle').textContent = `안 ${state.sel + 1}${state.sel === 0 ? ' · 추천' : ''} · ${sol.N}개 구역`;
+    $('#detailTitle').innerHTML = `안 ${state.sel + 1}${state.sel === 0 ? '<i class="rec">추천</i>' : ''}`;
   }
   $('#detailTitle').hidden = !sol;
   renderBasis(M);
