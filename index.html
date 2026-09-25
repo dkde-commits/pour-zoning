@@ -287,6 +287,67 @@ body[data-stage="start"] #manual:not([open]) summary::before{content:"또는 ";m
 .mc-notes{list-style:none;margin:12px 0 0;padding:12px 0 0;border-top:1px solid var(--rule);display:flex;flex-direction:column;gap:6px}
 .mc-notes li{font-size:12.5px;color:var(--muted);display:flex;gap:7px;line-height:1.45}
 .mc-notes li::before{content:"✓";color:var(--accent);font-weight:700}
+
+/* ===== 결과 화면 v2: 전체 폭 + 서랍 + 목록/상세 ===== */
+body[data-stage="result"] .top p{display:none}
+#out{display:flex;flex-direction:column;gap:14px}
+body[data-stage="result"] .layout{padding-top:14px}
+.res-head{flex-direction:column;align-items:stretch;gap:12px;padding:14px 18px}
+.rh-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.rh-main{display:flex;align-items:center;justify-content:space-between;gap:10px 20px;flex-wrap:wrap}
+.rh-status{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--rule);font-size:13.5px;color:var(--ink);line-height:1.55}
+.rh-status .ok-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-top:7px}
+.rh-status p{margin:0;flex:1;min-width:240px}
+.rh-status .warns{flex:none;padding:4px 10px;border-radius:999px}
+.rh-status .warns[open]{flex-basis:100%;border-radius:12px;padding:8px 12px}
+.drawer-h{display:none}
+body[data-stage="result"] .layout{grid-template-columns:minmax(0,1fr);max-width:1480px}
+body[data-stage="result"] .panel{position:fixed;top:0;right:0;bottom:0;width:min(420px,94vw);z-index:60;background:var(--paper);overflow:auto;padding:14px 14px 40px;box-shadow:-10px 0 40px rgba(0,0,0,.18);transform:translateX(105%);transition:transform .25s ease;visibility:hidden}
+body.drawer-open .panel{transform:none;visibility:visible}
+body.drawer-open::after{content:"";position:fixed;inset:0;background:rgba(15,20,24,.35);z-index:55}
+body[data-stage="result"] .drawer-h{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 8px}
+.drawer-x{width:36px;height:36px;padding:0;border-radius:10px}
+.res-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.rb-info{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+.rb-info span{background:var(--card);border:1px solid var(--rule);border-radius:999px;padding:5px 11px;color:var(--ink);font-weight:500}
+.rb-info span b{color:var(--muted);font-weight:500;margin-right:4px}
+.rb-btn{border-radius:999px;padding:8px 14px;font-size:13px}
+#msgs .msg{margin-bottom:0}
+#msgs{display:flex;flex-direction:column;gap:8px}
+.warns{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 25%,transparent);border-radius:14px;padding:10px 14px}
+.warns summary{font-size:13.5px;font-weight:600;color:var(--warn);display:flex;gap:8px;align-items:center}
+.warns summary::after{content:"펼치기";margin-left:auto;font-size:12px;font-weight:500;color:var(--muted)}
+.warns[open] summary::after{content:"접기"}
+.warns ul{margin:8px 0 0;padding-left:18px;font-size:13.5px;line-height:1.6}
+/* 목록 + 상세 */
+.md{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;align-items:start}
+.md-list{background:var(--card);border:1px solid var(--rule);border-radius:16px;box-shadow:var(--shadow);padding:14px 12px;position:sticky;top:12px;max-height:calc(100vh - 24px);display:flex;flex-direction:column}
+.md-list-h{display:flex;align-items:baseline;justify-content:space-between;padding:0 4px 10px}
+.md-sub{font-size:12px;color:var(--muted)}
+.md-list .cands{display:flex;flex-direction:column;gap:8px;margin:0;overflow:auto;padding:2px;min-height:0}
+.md-list .cand{display:grid;grid-template-columns:84px 1fr;grid-template-areas:"svg ct" "svg cm" "svg tags";column-gap:10px;row-gap:2px;align-items:start;padding:8px;flex:none}
+.md-list .cand[aria-pressed="true"]{padding:7px}
+.md-list .cand svg{grid-area:svg;width:84px;aspect-ratio:1/1}
+.md-list .cand .ct{grid-area:ct;font-size:13.5px}
+.md-list .cand .cm{grid-area:cm;font-size:12px}
+.md-list .cand .tags{grid-area:tags}
+.md-detail{background:var(--card);border:1px solid var(--rule);border-radius:16px;box-shadow:var(--shadow);padding:14px 16px 16px;min-width:0}
+.dt-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin-bottom:10px}
+.dt-head h3{margin:0;font-size:17px}
+.dt-head .layers label{padding:6px 11px;font-size:12.5px}
+.md-detail .sheet{border:0;box-shadow:none;padding:0;background:none}
+.md-detail .drawing{background:var(--field);border-radius:12px}
+.md-detail .drawing svg{max-height:62vh}
+.dt-zones{margin-top:12px}
+.dt-zones .hint{margin-top:6px}
+.dt-more{box-shadow:none;border-radius:12px;margin-top:10px;padding:10px 12px}
+.md-detail .foot{margin-top:12px}
+@media (max-width:980px){
+  .md{grid-template-columns:1fr}
+  .md-list{position:static;max-height:none}
+  .md-list .cands{flex-direction:row;overflow-x:auto;padding-bottom:6px}
+  .md-list .cand{width:250px}
+}
 </style>
 </head>
 <body data-stage="start">
@@ -299,7 +360,8 @@ body[data-stage="start"] #manual:not([open]) summary::before{content:"또는 ";m
 </header>
 
 <div class="layout">
-<aside class="panel">
+<aside class="panel" id="panel">
+  <div class="drawer-h"><b>조건 바꾸기 · 모델 정보</b><button type="button" class="drawer-x" id="closeDrawer" aria-label="닫기">✕</button></div>
   <div class="intro" id="intro">
     <h2>IFC 모델로 콘크리트 타설구획을<br>자동으로 나눕니다</h2>
     <ol class="steps">
@@ -430,53 +492,59 @@ body[data-stage="start"] #manual:not([open]) summary::before{content:"또는 ";m
   <div id="out" hidden>
     <div class="res-head" id="resHead"></div>
     <div id="msgs"></div>
-    <div id="altBlock">
-      <h3 class="cand-h">타설 방법 후보 <span id="candCount"></span></h3>
-      <p class="hint">규칙 1~6을 모두 지키는 안만 추천순으로 보여줍니다. 누르면 아래에 큰 도면과 구역별 타설량이 나옵니다.</p>
-      <div class="cands" id="cands"></div>
-      <div class="tablewrap"><table class="alts" id="altTable"></table></div>
-    </div>
-    <h3 id="detailTitle">선택한 후보</h3>
-    <div class="layers" role="group" aria-label="도면 표시">
-      <label><input type="checkbox" data-layer="zones" checked>구획</label>
-      <label><input type="checkbox" data-layer="cand">절단 가능 위치</label>
-      <label><input type="checkbox" data-layer="units">최소 타설 단위</label>
-      <label><input type="checkbox" data-layer="struct" checked>보·기둥</label>
-      <span class="layer-note" id="layerNote"></span>
-    </div>
-    <div class="sheet" id="sheet">
-      <div class="zoomwrap">
-        <div class="drawing" id="drawing"></div>
-        <div class="zoomctl">
-          <button type="button" id="zIn" aria-label="확대">+</button>
-          <button type="button" id="zOut" aria-label="축소">−</button>
-          <button type="button" id="zFit" aria-label="전체 보기">전체</button>
+    <div class="md">
+      <section class="md-list" id="altBlock" aria-label="구획안 목록">
+        <div class="md-list-h"><h3 class="cand-h">구획안 <span id="candCount"></span></h3><span class="md-sub">추천순 · 눌러서 비교</span></div>
+        <div class="cands" id="cands"></div>
+        <div class="tablewrap" hidden><table class="alts" id="altTable"></table></div>
+      </section>
+      <section class="md-detail" id="detail" aria-live="polite">
+        <div class="dt-head">
+          <h3 id="detailTitle">선택한 구획안</h3>
+          <div class="layers" role="group" aria-label="도면 표시">
+            <label><input type="checkbox" data-layer="zones" checked>구획</label>
+            <label><input type="checkbox" data-layer="cand">절단 가능 위치</label>
+            <label><input type="checkbox" data-layer="units">최소 타설 단위</label>
+            <label><input type="checkbox" data-layer="struct" checked>보·기둥</label>
+            <span class="layer-note" id="layerNote"></span>
+          </div>
         </div>
-      </div>
-      <p class="hint zoomhint">휠(또는 손가락 두 개)로 확대·축소하고, 끌어서 이동합니다.</p>
-      <div class="legend" id="legend"></div>
-      <div class="basis tablewrap" id="basis" aria-label="판정 근거"></div>
-      <div class="titleblock">
-        <div class="tb-name"><h2 id="tbTitle"></h2><div class="sub" id="tbSub"></div></div>
-        <dl class="tb-facts" id="tbFacts"></dl>
-      </div>
+        <div class="sheet" id="sheet">
+          <div class="zoomwrap">
+            <div class="drawing" id="drawing"></div>
+            <div class="zoomctl">
+              <button type="button" id="zIn" aria-label="확대">+</button>
+              <button type="button" id="zOut" aria-label="축소">−</button>
+              <button type="button" id="zFit" aria-label="전체 보기">전체</button>
+            </div>
+          </div>
+          <div class="legend" id="legend"></div>
+          <div class="titleblock" hidden>
+            <div class="tb-name"><h2 id="tbTitle"></h2><div class="sub" id="tbSub"></div></div>
+            <dl class="tb-facts" id="tbFacts"></dl>
+          </div>
+        </div>
+        <div class="dt-zones" id="zoneBlock">
+          <div class="tablewrap"><table id="zoneTable"></table></div>
+          <p class="hint">구역별 이음은 그 구역을 둘러싼 이음 길이라 이웃과 맞닿은 이음이 양쪽에 들어갑니다. 합계는 중복을 뺀 값입니다.</p>
+        </div>
+        <details class="dt-more">
+          <summary>판정 근거</summary>
+          <div class="basis tablewrap" id="basis" aria-label="판정 근거"></div>
+        </details>
+        <details class="dt-more">
+          <summary>내보내기 (CSV · SVG · JSON)</summary>
+          <div class="exports">
+            <button type="button" id="dlCsv">구역표 CSV 저장</button>
+            <button type="button" id="dlSvg">도면 SVG 저장</button>
+            <button type="button" id="dlJson">입력값 JSON 저장</button>
+          </div>
+          <label for="exportText">저장이 안 되는 환경에서는 아래 내용을 복사해 쓰세요.</label>
+          <textarea id="exportText" readonly spellcheck="false"></textarea>
+        </details>
+        <p class="foot">구역 타설량은 면적 비율 배분값이며, 이음 위치는 구조기술자 확인을 거쳐 확정하세요. 휠·두 손가락으로 도면을 확대하고 끌어서 이동할 수 있습니다.</p>
+      </section>
     </div>
-    <div id="zoneBlock">
-      <h3>구역별 타설량</h3>
-      <p class="hint">구역별 이음 길이는 그 구역을 둘러싼 이음면 길이라, 이웃과 맞닿은 이음이 양쪽에 모두 들어갑니다. 합계는 중복을 뺀 실제 이음 길이입니다.</p>
-      <div class="tablewrap"><table id="zoneTable"></table></div>
-    </div>
-    <div class="exportcard">
-    <h3>내보내기</h3>
-    <div class="exports">
-      <button type="button" id="dlCsv">구역표 CSV 저장</button>
-      <button type="button" id="dlSvg">도면 SVG 저장</button>
-      <button type="button" id="dlJson">입력값 JSON 저장</button>
-    </div>
-    <label for="exportText">저장이 안 되는 환경에서는 아래 내용을 복사해 쓰세요.</label>
-    <textarea id="exportText" readonly spellcheck="false"></textarea>
-    </div>
-    <p class="foot">절단 후보선은 경간마다 규칙 1·2를 만족하는 조각을 모두 찾아 조각마다 하나씩 둡니다. 구역 타설량은 면적 비율 배분값이며, 이음면 위치는 구조기술자 확인을 거쳐 확정하세요.</p>
   </div>
 </main>
 </div>
@@ -1997,7 +2065,14 @@ const state = { M: null, R: null, sel: 0, inp: null, N: 0, fail: false };
 
 const MSG_TAG = { err: '오류', warn: '주의', ok: '완료' };
 function showMsgs(list) {
-  $('#msgs').innerHTML = list.map(([k, t]) => `<div class="msg ${k}"><span class="tag">${MSG_TAG[k] || '안내'}</span><p>${t}</p></div>`).join('');
+  const one = ([k, t]) => `<div class="msg ${k}"><span class="tag">${MSG_TAG[k] || '안내'}</span><p>${t}</p></div>`;
+  const ok = list.filter(([k]) => k === 'ok');
+  const quiet = list.filter(([k, t]) => k === 'warn' && t.indexOf('<button') < 0);
+  const loud = list.filter(x => !ok.includes(x) && !quiet.includes(x));
+  state.okText = ok.map(([, t]) => t).join(' ');
+  state.quiet = quiet.map(([, t]) => t);
+  $('#msgs').innerHTML = loud.map(one).join('');
+  $('#msgs').hidden = !loud.length;
 }
 
 function requireP() {
@@ -2009,6 +2084,7 @@ function requireP() {
 }
 function run() {
   if (!requireP()) return;
+  closeDrawer();
   const btn = $('#run'), btn2 = $('#ifcRun'); btn.dataset.label = btn.dataset.label || btn.textContent; btn2.dataset.label = btn2.dataset.label || btn2.textContent; btn.disabled = true; btn2.disabled = true; btn.textContent = btn2.textContent = num('N') > 0 ? '계산 중…' : '가장 빠른 계획 찾는 중…';
   setTimeout(() => {
     try { compute(); } catch (e) { $('#empty').hidden = true; $('#out').hidden = false; showMsgs([['err', '계산 중 오류: ' + esc(e.message)]]); console.error(e); }
@@ -2105,13 +2181,20 @@ function setStage(s) { document.body.dataset.stage = s; }
 function renderHead() {
   const M = state.M, inp = state.inp, sol = state.R ? state.R.sols[state.sel] : null;
   if (!M || !inp) { $('#resHead').innerHTML = ''; return; }
+  const bits = [];
+  if (state.fileName && state.ifcInfo) bits.push(['파일', state.fileName]);
+  bits.push(['층', inp.floor || '-'], ['1일 한도', `${inp.P} ㎥`], ['구역 수', state.auto ? '자동' : `${state.N}개`]);
   const title = sol ? `<em>${sol.N}일</em> 타설 계획 · ${sol.N}개 구역` : '구획안을 만들지 못했습니다';
-  const kpi = [['총 타설량', `${f1(M.C)} ㎥`], ['1일 한도', `${inp.P} ㎥`]];
-  if (sol) kpi.push(['구획안', `${state.R.sols.length}개`], ['가장 큰 구역', `${f1(sol.maxVol)} ㎥`]);
-  const I = state.ifcInfo;
-  const short = w => w.replace(/모델이 X·Y축에서 (-?[\d.]+)° 돌아가 있어.*/, '$1° 회전 보정').replace(/이 층의 슬래브 (\d+)개를 한 바닥으로 합쳐 계산했습니다\./, '슬래브 $1개 합침').replace(/두께 ([\d.]+) m 미만인 칸막이벽 (\d+)개는 제외했습니다.*/, '칸막이벽 $2개 제외').replace(/높이가 다른 슬래브 (\d+)개.*/, '높이 다른 슬래브 $1개 제외');
-  const chips = I ? [`기둥 ${I.cols}`, `보 ${I.beams}`, `구조벽 ${I.walls}`, `개구부 ${I.open}`].concat((I.W || []).map(short).filter(w => w.length < 24)) : [];
-  $('#resHead').innerHTML = `<div class="rt"><small>${esc(inp.project || '프로젝트')} · ${esc(inp.floor || '층')}</small><h2>${title}</h2></div><dl class="res-kpis">${kpi.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('')}</dl>`;
+  const kpi = [['총 타설량', `${f1(M.C)} ㎥`]];
+  if (sol) kpi.push(['가장 큰 구역', `${f1(sol.maxVol)} ㎥`], ['구역 간 차이', `${(sol.maxDev * 100).toFixed(0)}%`], ['구획안', `${state.R.sols.length}개`]);
+  const q = state.quiet || [];
+  const warns = q.length ? `<details class="warns"><summary><span class="tag" style="background:var(--warn);color:#fff;font-size:11px;padding:1px 7px;border-radius:999px">주의</span>확인할 사항 ${q.length}건</summary><ul>${q.map(t => `<li>${t}</li>`).join('')}</ul></details>` : '';
+  const status = (state.okText || q.length) ? `<div class="rh-status">${state.okText ? `<span class="ok-dot" aria-hidden="true"></span><p>${state.okText}</p>` : ''}${warns}</div>` : '';
+  $('#resHead').innerHTML = `
+    <div class="rh-top"><div class="rb-info">${bits.map(([a, b]) => `<span><b>${a}</b>${esc(b)}</span>`).join('')}</div>
+      <button type="button" class="rb-btn" id="openDrawer">조건 바꾸기 · 모델 정보</button></div>
+    <div class="rh-main"><div class="rt"><small>${esc(inp.project || '프로젝트')} · ${esc(inp.floor || '층')}</small><h2>${title}</h2></div>
+      <dl class="res-kpis">${kpi.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('')}</dl></div>${status}`;
 }
 function renderModelCard() {
   const M = state.M, inp = state.inp; if (!M || !inp) { $('#modelCard').hidden = true; return; }
@@ -2178,14 +2261,14 @@ function renderAll(fresh) {
       `<tr><td><b>합계</b></td><td><b>${f1(sol.vol.reduce((a, b) => a + b, 0))}</b></td><td>${f1(M.totalArea)}</td><td></td><td>${f1(sol.total)} <small>(중복 제외)</small></td></tr></tbody>`;
     $('#candCount').textContent = state.R.sols.length < 10 ? (state.Rinfo && state.Rinfo.timedOut ? `${state.R.sols.length}개 (제한 시간 내)` : `${state.R.sols.length}개 (가능한 안 전부)`) : '10개';
     $('#cands').innerHTML = state.R.sols.map((s, i) => `<button type="button" class="cand" data-i="${i}" aria-pressed="${i === state.sel}">
-        <span class="ct">후보 ${i + 1}${i === 0 ? ' <small>추천</small>' : ''}<small>${s.N}구역</small></span>
+        <span class="ct">안 ${i + 1}${i === 0 ? ' <small>추천</small>' : ''}<small>${s.N}구역</small></span>
         ${drawMini(M, s)}
         <span class="cm">최대 ${f1(s.maxVol)} ㎥ · 편차 ${(s.maxDev * 100).toFixed(0)}%<br>최소 ${f1(s.minVol)} ㎥ · 이음 ${f1(s.total)} m</span>
         <span class="tags">${(s.tags || []).map(t => `<span class="${t.startsWith('타설') ? 'day' : ''}">${t}</span>`).join('')}</span>
       </button>`).join('');
     $('#altTable').innerHTML = `<thead><tr><th>후보</th><th>구역(일)</th><th>최대 편차</th><th>최대 구역 (㎥)</th><th>최소 구역 (㎥)</th><th>총 이음 (m)</th></tr></thead><tbody>` +
       state.R.sols.map((s, i) => `<tr data-i="${i}" class="${i === state.sel ? 'sel' : ''}" tabindex="0"><td>${i + 1}${i === 0 ? ' 추천' : ''}</td><td>${s.N}</td><td>${(s.maxDev * 100).toFixed(1)}%</td><td>${f1(s.maxVol)}</td><td>${f1(s.minVol)}</td><td>${f1(s.total)}</td></tr>`).join('') + '</tbody>';
-    $('#detailTitle').textContent = `후보 ${state.sel + 1} 상세${state.sel === 0 ? ' (추천)' : ''}`;
+    $('#detailTitle').textContent = `안 ${state.sel + 1}${state.sel === 0 ? ' · 추천' : ''} · ${sol.N}개 구역`;
   }
   $('#detailTitle').hidden = !sol;
   renderBasis(M);
@@ -2413,6 +2496,16 @@ function download(name, text, type) {
   $('#exportText').value = text; $('#exportText').select();
 }
 
+const openDrawer = () => document.body.classList.add('drawer-open');
+const closeDrawer = () => document.body.classList.remove('drawer-open');
+document.addEventListener('click', e => { if (e.target.closest('#openDrawer')) openDrawer(); });
+$('#closeDrawer').addEventListener('click', closeDrawer);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+document.addEventListener('click', e => {
+  if (!document.body.classList.contains('drawer-open')) return;
+  if (e.target.closest('#panel') || e.target.closest('#openDrawer')) return;
+  closeDrawer();
+});
 $('#run').addEventListener('click', run);
 $('#P').addEventListener('input', () => { if (num('P') > 0) { $('#P').classList.remove('invalid'); $('#pErr').hidden = true; } });
 $('#msgs').addEventListener('click', e => { const b = e.target.closest('.inline-btn'); if (!b) return; if (b.dataset.time) state.searchTime = +b.dataset.time; else $('#N').value = b.dataset.n; run(); });
@@ -2421,7 +2514,7 @@ document.querySelectorAll('[data-layer]').forEach(c => c.addEventListener('chang
 $('#cands').addEventListener('click', e => {
   const b = e.target.closest('.cand'); if (!b) return;
   state.sel = +b.dataset.i; renderAll(false);
-  if (window.matchMedia('(max-width:920px)').matches) $('#detailTitle').scrollIntoView({ behavior: 'smooth' });
+  if (window.matchMedia('(max-width:980px)').matches) $('#detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 $('#altTable').addEventListener('click', e => { const tr = e.target.closest('tr[data-i]'); if (!tr) return; state.sel = +tr.dataset.i; renderAll(false); });
 $('#altTable').addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const tr = e.target.closest('tr[data-i]'); if (!tr) return; e.preventDefault(); state.sel = +tr.dataset.i; renderAll(false); });
@@ -2463,7 +2556,7 @@ function loadIFCText(text, name) {
       const best = cand.slice().sort((a, b) => (b.count.beam - a.count.beam) || (b.elev - a.elev))[0];
       sel.value = best.id;
       $('#ifcPick').hidden = false;
-      $('#fileName').textContent = name; $('#fileChip').hidden = false; $('#modelCard').hidden = true; state.ifcInfo = null;
+      $('#fileName').textContent = name; state.fileName = name; $('#fileChip').hidden = false; $('#modelCard').hidden = true; state.ifcInfo = null;
       setStage('pick');
       clearModelFields(`${name} — 층을 고르고 [이 층 구획하기]를 누르면 여기에 채워집니다.`);
       ifcStatus(`객체 ${IFCM.count.toLocaleString()}개, 층 ${IFCM.storeys.length}개를 읽었습니다. 아래에서 층을 고르세요.`, 'ok');
