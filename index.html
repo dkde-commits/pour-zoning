@@ -524,7 +524,7 @@ body[data-stage="result"] .ifc-status.ok{display:block}
     <summary>규칙 설정값</summary>
     <div class="row2">
       <div><label for="ratio">가운데 구간 비율</label><input id="ratio" type="text" value="1/3"></div>
-      <div><label for="mult">작은보 이격 배수</label><input id="mult" type="number" step="0.5" min="0" value="2"></div>
+      <div><label for="mult">작은보 이격 배수 (면에서)</label><input id="mult" type="number" step="0.5" min="0" value="2"></div>
       <div><label for="defW">기본 작은보 폭 (m)</label><input id="defW" type="number" step="0.05" min="0.05" value="0.4"></div>
       <div><label for="minCut">최소 절단 가능 폭 (m)</label><input id="minCut" type="number" step="0.05" min="0" value="0.3"></div>
       <div><label for="cantMin">캔틸레버로 보는 내민 길이 (m)</label><input id="cantMin" type="number" step="0.05" min="0" value="0.6"></div>
@@ -548,7 +548,7 @@ body[data-stage="result"] .ifc-status.ok{display:block}
     <summary>적용 규칙 6가지</summary>
     <ol>
       <li>보를 가로지를 때 기둥 사이 가운데 1/3 안에서만 자른다 (KCS 3.6.5(1), 수치는 ACI 318-14 26.5.6.2(b) 참조)</li>
-      <li>작은보 접합점에서 좌우로 작은보 폭의 2배는 비운다 (KCS 3.6.5(1) 단서)</li>
+      <li>작은보 옆면에서 작은보 폭의 2배 이내는 비운다 (KCS 3.6.5(1) 단서, ACI 318 26.5.6.2(c) — 면에서 잼)</li>
       <li>벽·코어·개구부는 지나갈 수 없다. 꺾임은 보·기둥 위에서만 — 어기는 배정은 후보에서 제외</li>
       <li>캔틸레버는 자르지 않고 옆 구역에 통째로 붙인다 (KCS 3.6.4(1))</li>
       <li>절단선은 그리드와 나란한 직선만 쓴다 (KCS 3.6.2(1), 3.7.1(3) + 시공성)</li>
@@ -646,7 +646,8 @@ function mkBeam(o, c, a, b, w, kind) { return { o, c, a, b, w, kind, j: [] }; }
 function crossOK(beam, pos, r, m) {
   const L = beam.b - beam.a, lo = beam.a + L * (1 - r) / 2, hi = beam.b - L * (1 - r) / 2;
   if (pos < lo - EPS || pos > hi + EPS) return { ok: false, why: 'mid' };
-  for (const jn of beam.j) if (Math.abs(pos - jn.pos) < m * jn.w - EPS) return { ok: false, why: 'jn' };
+  // 작은보 접합부: 작은보 '면'에서 폭의 m배 이상 떨어져야 한다 (중심 기준이면 w/2만큼 덜 떨어짐)
+  for (const jn of beam.j) if (Math.abs(pos - jn.pos) < jn.w / 2 + m * jn.w - EPS) return { ok: false, why: 'jn' };
   return { ok: true };
 }
 
@@ -1140,14 +1141,9 @@ function repairBends(M, z, N, P, rnd) {
 
 // 규칙 3 점검: 슬래브 한가운데(보 위가 아닌 곳)에서 꺾인 지점
 function computeBends(M, z) {
-  const { X, Y, nx, ny, active, unitOf } = M, pts = [];
-  const zc = (i, j) => { const k = j * nx + i; return active[k] ? z[unitOf[k]] : -2; };
-  for (let j = 1; j < ny; j++) for (let i = 1; i < nx; i++) {
-    const sw = zc(i - 1, j - 1), se = zc(i, j - 1), nw = zc(i - 1, j), ne = zc(i, j);
-    if (sw < 0 || se < 0 || nw < 0 || ne < 0) continue;
-    const n = nw !== ne, s = sw !== se, w = sw !== nw, e = se !== ne;
-    if (n + s + w + e === 2 && !(n && s) && !(w && e) && !M.onBeam(X[i], Y[j])) pts.push([X[i], Y[j]]);
-  }
+  // 보정 단계(repairBends)와 똑같은 판정을 쓴다. 개구부 모서리 옆의 꺾임도 잡는다
+  const { X, Y, nx, ny } = M, pts = [];
+  for (let j = 1; j < ny; j++) for (let i = 1; i < nx; i++) if (bendAtNode(M, z, j * (nx + 1) + i)) pts.push([X[i], Y[j]]);
   return pts;
 }
 
@@ -1396,6 +1392,15 @@ function pickSeedsG(items, N, rnd) {
 }
 
 // 타설 방법 후보 추천: 사용자가 정한 N구역 안에서, 규칙을 모두 지키면서 서로 충분히 다른 배정을 want개까지
+function feasibilityScan(M, nFrom, nTo, tEach) {
+  const out = [];
+  for (let n = Math.max(1, nFrom); n <= Math.min(M.units.length, nTo); n++) {
+    if (n < M.comps.length) { out.push({ n, best: null }); continue; }
+    const R = recommend(M, n, 1e12, 60, 5, tEach);
+    out.push({ n, best: R.sols.length ? Math.min(...R.sols.map(s => s.maxVol)) : null });
+  }
+  return out;
+}
 function recommend(M, N, P, restarts, want, timeMs) {
   want = want || 10;
   const pairs = [];
@@ -2167,15 +2172,12 @@ function run() {
   }, 30);
 }
 
-function suggestP(M, fromN) {
-  let best = null;
-  for (let n = Math.max(2, fromN); n <= Math.min(M.units.length, fromN + 7); n++) {
-    const R = recommend(M, n, 1e9, 60, 5, 1000);
-    if (!R.sols.length) continue;
-    const mv = Math.min(...R.sols.map(s => s.maxVol));
-    if (!best || mv < best.vol - 1e-6) best = { vol: mv, N: n };
-  }
-  return best ? { P: Math.ceil(best.vol + 0.5), N: best.N } : null;
+function suggestP(M) {
+  const scan = state.scan && state.scan.M === M ? state.scan : Object.assign(feasibilityScan(M, 2, Math.max(M.Nmin + 7, 8), 700), { M });
+  const ok = scan.filter(x => x.best !== null);
+  if (!ok.length) return null;
+  const b = ok.reduce((a, x) => x.best < a.best ? x : a);
+  return { P: Math.ceil(b.best + 0.5), N: b.n };
 }
 function suggestTxt(sg) {
   if (!sg) return ' 규칙을 지키면서 나눌 수 있는 방법을 찾지 못했습니다. 모델의 보·벽 배치를 확인해 주세요.';
@@ -2196,7 +2198,7 @@ function compute() {
   const big = M.units[M.maxUnit];
   if (big.vol > inp.P + 1e-6) {
     state.fail = true;
-    const sg = suggestP(M, Math.max(2, Math.ceil(M.C / Math.max(big.vol, 1)) - 1));
+    const sg = suggestP(M);
     msgs.unshift(['err', `한 번에 쳐야 하는 가장 큰 덩어리가 ${f1(big.vol)} ㎥라, 하루 한도 ${inp.P} ㎥로는 나눌 수 없습니다(도면의 빨간 빗금).` + suggestTxt(sg)]);
   } else if (N < M.Nmin) {
     state.fail = true;
@@ -2211,14 +2213,19 @@ function compute() {
     const tm = state.searchTime || 10000; state.searchTime = 0;
     let R, tried = [];
     if (auto) {
-      // 자동: 하한부터 한 구역씩 늘려, 규칙을 모두 지키는 안이 나오는 가장 적은 구역 수(= 가장 짧은 공기)를 찾는다
-      const maxN = Math.min(M.units.length, N + 8);
-      for (let n = N; n <= maxN; n++) {
-        const probe = recommend(M, n, inp.P, inp.restarts, 10, Math.min(3000, tm));
-        tried.push(n);
-        if (probe.sols.length) { N = n; R = probe.sols.length >= 10 ? probe : recommend(M, n, inp.P, inp.restarts, 10, tm); break; }
-        R = probe;
+      // 1) 하한 구역 수로 먼저 시도 (대부분 여기서 끝남)
+      R = recommend(M, N, inp.P, inp.restarts, 10, Math.min(3000, tm)); tried.push(N);
+      if (!R.sols.length) {
+        // 2) 한도 없이 구역 수별로 규칙상 가능한지, 가장 큰 구역을 얼마까지 줄일 수 있는지 훑는다
+        const scan = feasibilityScan(M, 2, Math.max(N + 7, 8), 700);
+        state.scan = Object.assign(scan, { M });
+        const cand = scan.filter(x => x.n > N && x.best !== null && x.best <= inp.P + 1e-6).map(x => x.n);
+        for (const n of cand.slice(0, 3)) {
+          const r2 = recommend(M, n, inp.P, inp.restarts, 10, Math.min(tm, 5000)); tried.push(n);
+          if (r2.sols.length) { N = n; R = r2; break; }
+        }
       }
+      if (R.sols.length && R.sols.length < 10) { const r3 = recommend(M, N, inp.P, inp.restarts, 10, tm); if (r3.sols.length > R.sols.length) R = r3; }
       state.N = N;
     } else R = recommend(M, N, inp.P, inp.restarts, 10, tm);
     state.auto = auto; state.autoTried = tried;
@@ -2232,9 +2239,9 @@ function compute() {
       const whyTxt = why.length ? ` 검토한 안 가운데 ${why.join(', ')}.` : '';
       const more = R.timedOut ? ` <button type="button" class="inline-btn" data-time="40000">더 오래 찾기 (최대 40초)</button>` : '';
       const lead = auto
-        ? `${tried[0]}구역부터 ${tried[tried.length - 1]}구역까지 늘려 봤지만 규칙을 모두 지키는 구획안을 찾지 못했습니다.${R.timedOut ? ' 층이 커서 모든 경우를 확인하지는 못했습니다.' : whyTxt}`
+        ? `하루 한도 ${inp.P} ㎥로는 규칙을 모두 지키는 구획안이 없습니다.`
         : R.timedOut ? `제한 시간(${tm / 1000}초) 안에 ${N}구역으로 규칙을 모두 지키는 구획안을 찾지 못했습니다. 층이 커서 모든 경우를 확인하지 못한 것이라, 시간을 더 주면 나올 수 있습니다.` : `${N}구역으로는 규칙을 모두 지키는 구획안을 찾지 못했습니다.${whyTxt}`;
-      if (auto) { const sg = suggestP(M, N); msgs.unshift(['err', lead + suggestTxt(sg)]); }
+      if (auto) { const sg = suggestP(M); msgs.unshift(['err', lead + suggestTxt(sg)]); }
       else msgs.unshift(['err', `${lead} 구역 수를 늘려도 선택지가 넓어집니다.${more} <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
     } else {
       state.R = R;
@@ -2244,7 +2251,7 @@ function compute() {
           ? `규칙을 모두 지키면서 가장 빨리 끝나는 계획은 ${N}구역(${N}일)입니다. 물량만 보면 ${M.Nmin}일이면 되지만, 곧은 절단선·코어 관통 금지 같은 규칙 때문에 ${M.Nmin === N - 1 ? M.Nmin + '일' : M.Nmin + '~' + (N - 1) + '일'}로는 나눌 수 없었습니다.`
           : `규칙을 모두 지키면서 가장 빨리 끝나는 계획은 ${N}구역(${N}일)으로, 물량상 최소 일수와 같습니다.`)
         : `${N}구역(${N}일) 기준으로 계산했습니다.`;
-      msgs.unshift(['ok', `${lead} 구획안 ${R.sols.length}개 중 추천안은 가장 큰 구역이 ${f1(s.maxVol)} ㎥(하루 한도 ${inp.P} ㎥)이고, 구역 간 물량 차이는 최대 ${(s.maxDev * 100).toFixed(1)}%입니다.`]);
+      msgs.unshift(['ok', `${lead} 구획안 ${R.sols.length}개 중 추천안은 가장 큰 구역이 ${f1(s.maxVol)} ㎥(하루 한도 ${inp.P} ㎥)이고, 평균 대비 편차는 최대 ${(s.maxDev * 100).toFixed(1)}%입니다.`]);
       if (R.sols.length < 10) msgs.push(['warn', R.timedOut
         ? `제한 시간(${tm / 1000}초) 안에 찾은 구획안이 ${R.sols.length}개입니다. 층이 커서 모든 경우를 확인하지는 못했으니, 시간을 더 주면 더 나올 수 있습니다. <button type="button" class="inline-btn" data-time="40000">더 오래 찾기 (최대 40초)</button> <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`
         : `이 조건에서는 규칙을 모두 지키는 구획안이 ${R.sols.length}개뿐이라, ${R.sols.length === 1 ? '그 1개만' : `가능한 ${R.sols.length}개를 모두`} 보여드립니다. 구역 수를 늘리면 선택지가 넓어집니다. <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
@@ -2279,7 +2286,7 @@ function renderHead() {
   if (sol && state.auto) badge = sol.N > M.Nmin ? `<span class="rh-badge warn">규칙 때문에 최소보다 ${sol.N - M.Nmin}일 더</span>` : '<span class="rh-badge ok">물량상 최소 일수</span>';
   const q = state.quiet || [];
   const warns = q.length ? `<details class="warns"><summary>주의 ${q.length}</summary><ul>${q.map(t => `<li>${t}</li>`).join('')}</ul></details>` : '';
-  const kpi = sol ? [['총 타설량', f1(M.C), '㎥'], ['가장 큰 구역', f1(sol.maxVol), '㎥'], ['구역 간 차이', (sol.maxDev * 100).toFixed(0), '%']] : [['총 타설량', f1(M.C), '㎥']];
+  const kpi = sol ? [['총 타설량', f1(M.C), '㎥'], ['가장 큰 구역', f1(sol.maxVol), '㎥'], ['평균 대비 편차', (sol.maxDev * 100).toFixed(0), '%']] : [['총 타설량', f1(M.C), '㎥']];
   $('#resHead').innerHTML = `
     <div class="rh-top"><div class="rh-cond">${cond}</div>
       <div class="rh-act">${warns}<button type="button" class="rb-btn" id="openDrawer">조건 바꾸기</button></div></div>
@@ -2356,7 +2363,7 @@ function renderAll(fresh) {
     $('#cands').innerHTML = state.R.sols.map((s, i) => `<button type="button" class="cand" data-i="${i}" aria-pressed="${i === state.sel}">
         <span class="ct">${altName(i)}${i === 0 ? '<i class="rec">추천</i>' : ''}${state.auto ? '' : `<small>${s.N}구역</small>`}</span>
         ${drawMini(M, s)}
-        <span class="cm"><span><em>최대</em><strong>${Math.round(s.maxVol)}<u>㎥</u></strong></span><span><em>차이</em><strong>${(s.maxDev * 100).toFixed(0)}<u>%</u></strong></span></span>
+        <span class="cm"><span><em>최대</em><strong>${Math.round(s.maxVol)}<u>㎥</u></strong></span><span><em>편차</em><strong>${(s.maxDev * 100).toFixed(0)}<u>%</u></strong></span></span>
       </button>`).join('');
     $('#altTable').innerHTML = `<thead><tr><th>후보</th><th>구역(일)</th><th>최대 편차</th><th>최대 구역 (㎥)</th><th>최소 구역 (㎥)</th><th>총 이음 (m)</th></tr></thead><tbody>` +
       state.R.sols.map((s, i) => `<tr data-i="${i}" class="${i === state.sel ? 'sel' : ''}" tabindex="0"><td>${altName(i)}${i === 0 ? ' 추천' : ''}</td><td>${s.N}</td><td>${(s.maxDev * 100).toFixed(1)}%</td><td>${f1(s.maxVol)}</td><td>${f1(s.minVol)}</td><td>${f1(s.total)}</td></tr>`).join('') + '</tbody>';
