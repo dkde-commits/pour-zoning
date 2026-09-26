@@ -402,6 +402,11 @@ body[data-stage="result"] .spec{display:none}
 @media (max-width:560px){#zoneTable th:nth-child(3),#zoneTable td:nth-child(3){display:none}#zoneTable .gauge{width:34px;margin-right:6px}#zoneTable th,#zoneTable td{padding:10px 8px}.dt-head .layers label{padding:5px 9px;font-size:12px}.rh-days b{font-size:44px}.res-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%}.res-kpis div{min-width:0;padding:8px 10px}.res-kpis dd{font-size:17px}.res-kpis dt{font-size:11px}}
 
 /* ===== 머리글·바닥글 정리 ===== */
+.md.no-list{grid-template-columns:minmax(0,1fr)}
+.md.no-list .md-detail .drawing svg{max-height:70vh}
+.rh-fail{color:var(--ng)}
+.ifc-status.err{background:var(--ng-soft);border:1px solid color-mix(in srgb,var(--ng) 25%,transparent);border-radius:12px;padding:10px 12px;line-height:1.6;color:var(--ink)}
+.ifc-status.err b{color:var(--ng)}
 body[data-stage="start"] #stepFile .step-h{display:none}
 body[data-stage="start"] #stepFile{padding-top:16px}
 .top{position:static;background:transparent;border:0;box-shadow:none;padding:18px clamp(16px,4vw,32px) 0;display:block}
@@ -1796,9 +1801,11 @@ const IFCReader = (() => {
       wall: ['IFCWALL', 'IFCWALLSTANDARDCASE', 'IFCWALLELEMENTEDCASE']
     };
     const kindOf = id => { const t = T(id); for (const k in TYPES) if (TYPES[k].includes(t)) return k; return null; };
+    // 기초판(매트기초 등): 보 구조 슬래브 규칙의 대상이 아님
+    const isFoundation = id => { const a = A(id); if (!a) return false; const v = a[8]; if (v && v.e === 'BASESLAB') return true; const nm = String(a[2] || '') + ' ' + String(a[4] || ''); return /기초|매트|footing|foundation|base ?slab|\bmat\b/i.test(nm); };
     const storeys = list('IFCBUILDINGSTOREY').map(id => {
-      const a = A(id), els = contained.get(id) || [], c = { slab: 0, column: 0, beam: 0, wall: 0 };
-      for (const e of els) { const k = kindOf(e); if (k) c[k]++; }
+      const a = A(id), els = contained.get(id) || [], c = { slab: 0, column: 0, beam: 0, wall: 0, found: 0 };
+      for (const e of els) { const k = kindOf(e); if (k) c[k]++; if (k === 'slab' && isFoundation(e)) c.found++; }
       const zw = placement(R(a[5])).o[2] * lenScale;
       return { id, name: a[2] || a[7] || ('#' + id), elev: typeof a[9] === 'number' ? a[9] * lenScale : zw, z: zw, count: c };
     }).sort((p, q) => p.elev - q.elev);
@@ -2038,7 +2045,7 @@ const IFCReader = (() => {
       const r3 = v => Math.round(v * 1000) / 1000;
       const mvx = v => r3(v - ox), mvy = v => r3(v - oy);
       return {
-        project: projName, floor: st.name,
+        project: projName, floor: st.name, foundation: isFoundation(main.id) || t >= 0.6,
         slab: poly.map(p => [mvx(p[0]), mvy(p[1])]), slabs: slabRings.map(pg => pg.map(p => [mvx(p[0]), mvy(p[1])])), t: r3(t), C: Math.round((slabVol + beamVol) * 10) / 10,
         columns: columns.map(c => [mvx(c[0]), mvy(c[1])]),
         beams: beams.map(b => b.o === 'h' ? [mvx(b.a), mvy(b.c), mvx(b.b), mvy(b.c), r3(b.w)] : [mvx(b.c), mvy(b.a), mvx(b.c), mvy(b.b), r3(b.w)]),
@@ -2160,6 +2167,20 @@ function run() {
   }, 30);
 }
 
+function suggestP(M, fromN) {
+  let best = null;
+  for (let n = Math.max(2, fromN); n <= Math.min(M.units.length, fromN + 7); n++) {
+    const R = recommend(M, n, 1e9, 60, 5, 1000);
+    if (!R.sols.length) continue;
+    const mv = Math.min(...R.sols.map(s => s.maxVol));
+    if (!best || mv < best.vol - 1e-6) best = { vol: mv, N: n };
+  }
+  return best ? { P: Math.ceil(best.vol + 0.5), N: best.N } : null;
+}
+function suggestTxt(sg) {
+  if (!sg) return ' 규칙을 지키면서 나눌 수 있는 방법을 찾지 못했습니다. 모델의 보·벽 배치를 확인해 주세요.';
+  return ` 규칙을 지키며 나누려면 하루 최소 약 ${sg.P} ㎥가 필요합니다. <button type="button" class="inline-btn" data-p="${sg.P}">한도 ${sg.P} ㎥로 다시 계산</button>`;
+}
 function compute() {
   const { inp, errs } = readInputs();
   setStage('result'); $('#empty').hidden = true; $('#out').hidden = false;
@@ -2170,11 +2191,13 @@ function compute() {
   const msgs = M.W.map(w => ['warn', esc(w)]);
   const auto = !(isFinite(inp.N) && inp.N > 0);
   let N = auto ? Math.max(M.Nmin, M.comps.length) : Math.round(inp.N); state.N = N;
+  state.auto = auto;
   $('#nHint').textContent = `물량상 최소 ${M.Nmin}일. 비워 두면 규칙까지 지키는 최단 일수로 자동 계산합니다.`;
   const big = M.units[M.maxUnit];
   if (big.vol > inp.P + 1e-6) {
     state.fail = true;
-    msgs.unshift(['err', `한 번에 쳐야 하는 가장 큰 덩어리(최소 타설 단위)가 ${f1(big.vol)} ㎥로 하루 한도 ${inp.P} ㎥를 넘어, 구역 수와 관계없이 계획을 세울 수 없습니다. 도면의 빨간 빗금 영역을 확인하거나 하루 한도를 늘려 주세요.`]);
+    const sg = suggestP(M, Math.max(2, Math.ceil(M.C / Math.max(big.vol, 1)) - 1));
+    msgs.unshift(['err', `한 번에 쳐야 하는 가장 큰 덩어리가 ${f1(big.vol)} ㎥라, 하루 한도 ${inp.P} ㎥로는 나눌 수 없습니다(도면의 빨간 빗금).` + suggestTxt(sg)]);
   } else if (N < M.Nmin) {
     state.fail = true;
     msgs.unshift(['err', `구역 수 N=${N}은 하한 ${M.Nmin}보다 작습니다. 총 ${f1(M.C)} ㎥를 하루 ${inp.P} ㎥로 치려면 최소 ${M.Nmin}구역이 필요합니다.`]);
@@ -2211,7 +2234,8 @@ function compute() {
       const lead = auto
         ? `${tried[0]}구역부터 ${tried[tried.length - 1]}구역까지 늘려 봤지만 규칙을 모두 지키는 구획안을 찾지 못했습니다.${R.timedOut ? ' 층이 커서 모든 경우를 확인하지는 못했습니다.' : whyTxt}`
         : R.timedOut ? `제한 시간(${tm / 1000}초) 안에 ${N}구역으로 규칙을 모두 지키는 구획안을 찾지 못했습니다. 층이 커서 모든 경우를 확인하지 못한 것이라, 시간을 더 주면 나올 수 있습니다.` : `${N}구역으로는 규칙을 모두 지키는 구획안을 찾지 못했습니다.${whyTxt}`;
-      msgs.unshift(['err', `${lead} 구역 수를 늘려도 선택지가 넓어집니다.${more} <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
+      if (auto) { const sg = suggestP(M, N); msgs.unshift(['err', lead + suggestTxt(sg)]); }
+      else msgs.unshift(['err', `${lead} 구역 수를 늘려도 선택지가 넓어집니다.${more} <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
     } else {
       state.R = R;
       const s = R.sols[0];
@@ -2260,7 +2284,7 @@ function renderHead() {
     <div class="rh-top"><div class="rh-cond">${cond}</div>
       <div class="rh-act">${warns}<button type="button" class="rb-btn" id="openDrawer">조건 바꾸기</button></div></div>
     <div class="rh-main">
-      <div class="rh-title">${sol ? `<div class="rh-days"><b>${sol.N}</b><span>일</span></div><div class="rh-sub"><span class="rh-lbl">타설 계획</span><span class="rh-zones">${sol.N}개 구역 · 하루 1구역</span>${badge}</div>` : '<div class="rh-sub"><span class="rh-fail">구획안 없음</span></div>'}</div>
+      <div class="rh-title">${sol ? `<div class="rh-days"><b>${sol.N}</b><span>일</span></div><div class="rh-sub"><span class="rh-lbl">타설 계획</span><span class="rh-zones">${sol.N}개 구역 · 하루 1구역</span>${badge}</div>` : '<div class="rh-sub"><span class="rh-fail">구획할 수 없음</span><span class="rh-zones">아래 안내의 버튼으로 조건을 바꿔 보세요.</span></div>'}</div>
       <dl class="res-kpis">${kpi.map(([a, b, c]) => `<div><dt>${a}</dt><dd>${b}<small>${c}</small></dd></div>`).join('')}</dl>
     </div>`;
 }
@@ -2306,7 +2330,7 @@ function renderAll(fresh) {
   const zchk = document.querySelector('[data-layer=zones]');
   zchk.disabled = !sol; zchk.closest('label').classList.toggle('off', !sol);
   zchk.closest('label').title = sol ? '' : '구획 결과가 나왔을 때만 켤 수 있습니다';
-  $('#layerNote').textContent = sol ? '' : '구획안이 없어 구획 표시는 꺼져 있습니다. 위 안내에 따라 조건을 바꿔 다시 계산해 보세요.';
+  $('#layerNote').textContent = sol ? '' : '구획안이 없어 구획 표시는 꺼져 있습니다.';
   const sh = $('#sheet'); if (fresh) { sh.classList.remove('fresh'); void sh.offsetWidth; sh.classList.add('fresh'); }
   $('#legend').innerHTML = [
     ['var(--girder)', '큰보'], ['var(--beam)', '작은보'], ['var(--wall)', '벽·코어'],
@@ -2323,6 +2347,7 @@ function renderAll(fresh) {
   ];
   $('#tbFacts').innerHTML = facts.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('');
   $('#zoneBlock').hidden = !sol; $('#altBlock').hidden = !sol;
+  document.querySelector('.md').classList.toggle('no-list', !sol);
   if (sol) {
     $('#zoneTable').innerHTML = `<thead><tr><th>구역</th><th>타설량</th><th>면적</th><th>한도 대비</th></tr></thead><tbody>` +
       sol.vol.map((v, k) => `<tr><td><span class="sw" style="background:${zColor(k)}"></span>C${k + 1}</td><td>${f1(v)} ㎥</td><td>${Math.round(sol.area[k])} ㎡</td><td class="${v > inp.P ? 'over' : ''}"><span class="gauge"><i style="width:${Math.min(100, v / inp.P * 100)}%"></i></span>${(v / inp.P * 100).toFixed(0)}%</td></tr>`).join('') +
@@ -2596,7 +2621,7 @@ document.addEventListener('click', e => {
 });
 $('#run').addEventListener('click', run);
 $('#P').addEventListener('input', () => { if (num('P') > 0) { $('#P').classList.remove('invalid'); $('#pErr').hidden = true; } });
-$('#msgs').addEventListener('click', e => { const b = e.target.closest('.inline-btn'); if (!b) return; if (b.dataset.time) state.searchTime = +b.dataset.time; else $('#N').value = b.dataset.n; run(); });
+$('#msgs').addEventListener('click', e => { const b = e.target.closest('.inline-btn'); if (!b) return; if (b.dataset.time) state.searchTime = +b.dataset.time; else if (b.dataset.p) $('#P').value = b.dataset.p; else $('#N').value = b.dataset.n; run(); });
 $('#example').addEventListener('click', () => { state.ifcInfo = null; fill(EXAMPLE); $('#formNote').textContent = '예제 값(가상의 보 구조 건물)입니다.'; run(); });
 document.querySelectorAll('[data-layer]').forEach(c => c.addEventListener('change', () => renderAll(false)));
 $('#cands').addEventListener('click', e => {
@@ -2640,7 +2665,7 @@ function loadIFCText(text, name) {
       if (!IFCM.storeys.length) throw new Error('층(IfcBuildingStorey) 정보가 없습니다.');
       if (!cand.length) throw new Error('슬래브(바닥)가 있는 층이 없습니다. IFC 내보내기에서 바닥이 포함됐는지 확인하세요.');
       const sel = $('#storey');
-      sel.innerHTML = IFCM.storeys.map(s => `<option value="${s.id}" ${s.count.slab ? '' : 'disabled'}>${esc(s.name)} (슬래브 ${s.count.slab}, 기둥 ${s.count.column}, 보 ${s.count.beam})</option>`).join('');
+      sel.innerHTML = IFCM.storeys.map(s => `<option value="${s.id}" ${s.count.slab ? '' : 'disabled'}>${esc(s.name)} (슬래브 ${s.count.slab}, 기둥 ${s.count.column}, 보 ${s.count.beam})${s.count.found ? ' · 기초판' : ''}</option>`).join('');
       const best = cand.slice().sort((a, b) => (b.count.beam - a.count.beam) || (b.elev - a.elev))[0];
       sel.value = best.id;
       $('#ifcPick').hidden = false;
@@ -2685,6 +2710,10 @@ $('#ifcRun').addEventListener('click', () => {
   if (!IFCM || $('#ifcPick').hidden) { run(); return; }
   try {
     const r = IFCM.extract(+$('#storey').value, { minWallT: num('minWallT') > 0 ? num('minWallT') : 0.2 });
+    if (r.foundation) {
+      ifcStatus(`<b>${esc(r.floor)}</b> 바닥은 두께 ${Math.round(r.t * 1000)} mm의 <b>기초판(매트기초)</b>입니다. 이 프로그램의 규칙은 보가 받치는 슬래브용이라 기초판에는 적용하지 않습니다. 기초판은 매스콘크리트 타설계획으로 따로 검토하세요. 위층(지하 1층 이상)을 골라 주세요.`, 'err');
+      return;
+    }
     state.ifcInfo = { cols: r.columns.length, beams: r.beams.length, walls: r.walls.length, open: r.openings.length, W: r.W, slabVol: r.info.slabVol, beamVol: r.info.beamVol };
     fill({ project: r.project, floor: r.floor, slab: r.slab, slabs: r.slabs, t: r.t, C: r.C, columns: r.columns, beams: r.beams, walls: r.walls, openings: r.openings });
     ifcStatus(`<span class="sum-chips"><b>${esc(r.floor)}</b><span>기둥 ${r.columns.length}</span><span>보 ${r.beams.length}</span><span>구조벽 ${r.walls.length}</span><span>개구부 ${r.openings.length}</span><span>${f1(r.C)} ㎥</span></span>`, 'ok');
