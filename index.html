@@ -6,7 +6,7 @@
 <title>타설구획 자동 분할</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --paper:#F2F4F6; --sheet:#FFFFFF; --card:#FFFFFF; --ink:#16191C; --muted:#6B7684; --rule:#E5E8EB; --field:#F7F8FA;
@@ -16,7 +16,7 @@
   --shadow:0 1px 2px rgba(22,25,28,.05), 0 8px 24px rgba(22,25,28,.06);
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
-  font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+  font-family:'IBM Plex Sans KR','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -425,6 +425,60 @@ body[data-stage="result"] .site-foot{padding-bottom:28px}
 .sum-chips b{background:var(--accent-soft);border-color:transparent;color:var(--accent);font-weight:700}
 .ifc-status.ok{color:var(--ink)}
 body[data-stage="result"] .ifc-status.ok{display:block}
+
+/* ===== 첫 화면: 도면 히어로 ===== */
+.hero,.drop-veil{display:none}
+body[data-stage="start"] .layout{grid-template-columns:minmax(0,1120px);justify-content:center;padding-top:clamp(28px,6vh,72px)}
+body[data-stage="start"] #intro,body[data-stage="start"] #stepFile{display:none}
+body[data-stage="start"] .hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(28px,5vw,64px);align-items:center}
+.hero-title{font-size:clamp(28px,3.2vw,40px);font-weight:700;line-height:1.24;letter-spacing:-.035em;color:var(--ink);margin:0 0 18px;word-break:keep-all}
+.hero-lede{font-size:16px;line-height:1.75;color:var(--muted);max-width:32em;margin:0 0 28px;word-break:keep-all}
+.hero-actions{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.btn-primary{display:inline-flex;align-items:center;background:var(--accent);color:#fff;font-weight:600;font-size:15.5px;padding:14px 24px;border-radius:10px;cursor:pointer;transition:background .15s}
+.btn-primary:hover{background:color-mix(in srgb,var(--accent) 85%,#000)}
+.btn-primary:focus-visible,.btn-quiet:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:3px}
+.btn-quiet{background:none;border:0;box-shadow:none;padding:6px 2px;font-size:15px;font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:5px;text-decoration-thickness:1px;border-radius:4px}
+.btn-quiet:hover{color:var(--accent);background:none}
+.hero-drop{font-size:13px;color:var(--muted);margin:14px 0 0}
+@media (hover:none){.hero-drop{display:none}}
+.hero-steps{list-style:none;counter-reset:st;margin:40px 0 0;padding:0;border-top:1px solid var(--rule);max-width:32em}
+.hero-steps li{counter-increment:st;display:grid;grid-template-columns:28px 1fr;column-gap:10px;padding:13px 0;border-bottom:1px solid var(--rule)}
+.hero-steps li::before{content:counter(st);grid-row:span 2;font-size:14px;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums;padding-top:1px}
+.hero-steps b{font-size:14.5px;font-weight:600;color:var(--ink)}
+.hero-steps span{font-size:13px;color:var(--muted);margin-top:2px}
+.hero-plan{margin:0;background:#fff;border:1px solid var(--rule);border-radius:6px;padding:18px 18px 12px}
+.hero-plan svg{display:block;width:100%;height:auto}
+.hero-plan figcaption{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.55}
+.hp-grid line{stroke:#9aa3ab;stroke-width:.8;stroke-dasharray:14 4 2 4}
+.hp-bub circle{fill:#fff;stroke:#5b6670;stroke-width:1}
+.hp-bub text{font-size:10px;font-weight:600;fill:#3a434b;text-anchor:middle;font-family:inherit}
+.hp-beam line{stroke:#D98A4E;stroke-width:4}
+.hp-sub line{stroke:#E3B74E;stroke-width:2.2}
+.hp-col rect{fill:#1f262d}
+.hp-slab{fill:none;stroke:#1f262d;stroke-width:2}
+.hp-joint line{stroke:#1f262d;stroke-width:4;stroke-linecap:square}
+.hp-lbl text{font-size:17px;font-weight:700;fill:#1f262d;text-anchor:middle;font-family:inherit}
+.hp-zones .z{opacity:.85}
+@media (prefers-reduced-motion:no-preference){
+  body[data-stage="start"] .hp-zones .z,body[data-stage="start"] .hp-lbl .l{opacity:0;animation:hpIn .45s ease-out forwards}
+  body[data-stage="start"] .hp-joint .j{stroke-dasharray:400;stroke-dashoffset:400;animation:hpDraw .5s ease-out forwards}
+  .z1,.l1{animation-delay:.5s!important}.z2,.l2{animation-delay:.95s!important}.z3,.l3{animation-delay:1.4s!important}.z4,.l4{animation-delay:1.85s!important}
+  .j1{animation-delay:.8s!important}.j2{animation-delay:1.25s!important}.j3{animation-delay:1.7s!important}.j4{animation-delay:2.1s!important}
+}
+@keyframes hpIn{to{opacity:.85}}
+.hp-lbl .l{animation-name:hpInL!important}
+@keyframes hpInL{to{opacity:1}}
+@keyframes hpDraw{to{stroke-dashoffset:0}}
+body[data-stage="start"] #manual{margin-top:4px;width:100%;max-width:1120px;justify-self:center}
+body[data-stage="start"] #manual:not([open]) summary{justify-content:flex-start;padding-left:0}
+@media (max-width:900px){
+  body[data-stage="start"] .hero{grid-template-columns:1fr}
+  .hero-plan{order:2}
+  .hero-steps{margin-top:28px}
+}
+/* 화면 어디에나 끌어다 놓기 */
+body.dragging .drop-veil{display:flex;position:fixed;inset:12px;z-index:80;border:2px dashed var(--accent);border-radius:14px;background:color-mix(in srgb,var(--accent) 8%,rgba(255,255,255,.85));align-items:center;justify-content:center;pointer-events:none}
+.drop-veil span{font-size:17px;font-weight:600;color:var(--accent)}
 </style>
 </head>
 <body data-stage="start">
@@ -435,6 +489,55 @@ body[data-stage="result"] .ifc-status.ok{display:block}
 <div class="layout">
 <aside class="panel" id="panel">
   <div class="drawer-h"><b>조건 바꾸기 · 모델 정보</b><button type="button" class="drawer-x" id="closeDrawer" aria-label="닫기">✕</button></div>
+  <section class="hero" id="hero" aria-labelledby="heroTitle">
+    <div class="hero-copy">
+      <h2 class="hero-title" id="heroTitle">IFC 모델을 올리면<br>하루치 타설 구역으로 나눕니다</h2>
+      <p class="hero-lede">슬래브·보·기둥을 읽고 KCS 14 20 10 이음 규칙에 맞춰, 가장 짧은 일수로 끝나는 타설구획안을 찾습니다.</p>
+      <div class="hero-actions">
+        <label for="ifcFile" class="btn-primary" tabindex="0" role="button" id="heroOpen">IFC 파일 열기</label>
+        <button type="button" class="btn-quiet" id="heroSample">예제로 보기</button>
+      </div>
+      <p class="hero-drop">파일을 이 화면에 끌어다 놓아도 됩니다.</p>
+      <ol class="hero-steps">
+        <li><b>모델 올리기</b><span>Revit에서 파일 → 내보내기 → IFC로 저장한 파일</span></li>
+        <li><b>층과 하루 타설량 정하기</b><span>현장에서 하루에 칠 수 있는 양을 넣습니다</span></li>
+        <li><b>구획안 비교</b><span>규칙을 지키는 안을 최단 일수부터 보여줍니다</span></li>
+      </ol>
+    </div>
+    <figure class="hero-plan">
+      <svg viewBox="0 0 520 420" role="img" aria-label="구역이 네 개로 나뉜 예시 평면도">
+  <g class="hp-grid">
+    <line x1="70" y1="36" x2="70" y2="396"/><line x1="170" y1="36" x2="170" y2="396"/><line x1="270" y1="36" x2="270" y2="396"/><line x1="370" y1="36" x2="370" y2="396"/><line x1="470" y1="36" x2="470" y2="396"/>
+    <line x1="36" y1="60" x2="500" y2="60"/><line x1="36" y1="160" x2="500" y2="160"/><line x1="36" y1="260" x2="500" y2="260"/><line x1="36" y1="360" x2="500" y2="360"/>
+  </g>
+  <g class="hp-bub">
+    <circle cx="70" cy="20" r="12"/><text x="70" y="24">X1</text><circle cx="170" cy="20" r="12"/><text x="170" y="24">X2</text><circle cx="270" cy="20" r="12"/><text x="270" y="24">X3</text><circle cx="370" cy="20" r="12"/><text x="370" y="24">X4</text><circle cx="470" cy="20" r="12"/><text x="470" y="24">X5</text>
+    <circle cx="20" cy="60" r="12"/><text x="20" y="64">Y4</text><circle cx="20" cy="160" r="12"/><text x="20" y="164">Y3</text><circle cx="20" cy="260" r="12"/><text x="20" y="264">Y2</text><circle cx="20" cy="360" r="12"/><text x="20" y="364">Y1</text>
+  </g>
+  <g class="hp-zones">
+    <polygon class="z z1" points="58,48 220,48 220,210 58,210" fill="#F4C58A"/>
+    <polygon class="z z2" points="220,48 382,48 382,210 220,210" fill="#B9DDB0"/>
+    <polygon class="z z3" points="58,210 320,210 320,372 58,372" fill="#F2B3C6"/>
+    <polygon class="z z4" points="382,148 482,148 482,372 320,372 320,210 382,210" fill="#A6C8EE"/>
+  </g>
+  <g class="hp-beam">
+    <line x1="58" y1="60" x2="382" y2="60"/><line x1="58" y1="160" x2="482" y2="160"/><line x1="58" y1="260" x2="482" y2="260"/><line x1="58" y1="360" x2="482" y2="360"/>
+    <line x1="70" y1="48" x2="70" y2="372"/><line x1="170" y1="48" x2="170" y2="372"/><line x1="270" y1="48" x2="270" y2="372"/><line x1="370" y1="48" x2="370" y2="372"/><line x1="470" y1="148" x2="470" y2="372"/>
+  </g>
+  <g class="hp-sub"><line x1="58" y1="110" x2="382" y2="110"/><line x1="58" y1="210" x2="482" y2="210"/><line x1="58" y1="310" x2="482" y2="310"/></g>
+  <g class="hp-col">
+    <rect x="64" y="54" width="12" height="12"/><rect x="164" y="54" width="12" height="12"/><rect x="264" y="54" width="12" height="12"/><rect x="364" y="54" width="12" height="12"/>
+    <rect x="64" y="154" width="12" height="12"/><rect x="164" y="154" width="12" height="12"/><rect x="264" y="154" width="12" height="12"/><rect x="364" y="154" width="12" height="12"/><rect x="464" y="154" width="12" height="12"/>
+    <rect x="64" y="254" width="12" height="12"/><rect x="164" y="254" width="12" height="12"/><rect x="264" y="254" width="12" height="12"/><rect x="364" y="254" width="12" height="12"/><rect x="464" y="254" width="12" height="12"/>
+    <rect x="64" y="354" width="12" height="12"/><rect x="164" y="354" width="12" height="12"/><rect x="264" y="354" width="12" height="12"/><rect x="364" y="354" width="12" height="12"/><rect x="464" y="354" width="12" height="12"/>
+  </g>
+  <polygon class="hp-slab" points="58,48 382,48 382,148 482,148 482,372 58,372"/>
+  <g class="hp-joint"><line class="j j1" x1="220" y1="48" x2="220" y2="210"/><line class="j j2" x1="58" y1="210" x2="382" y2="210"/><line class="j j3" x1="320" y1="210" x2="320" y2="372"/><line class="j j4" x1="382" y1="148" x2="382" y2="210"/></g>
+  <g class="hp-lbl"><text class="l l1" x="139" y="136">C1</text><text class="l l2" x="301" y="136">C2</text><text class="l l3" x="189" y="298">C3</text><text class="l l4" x="401" y="276">C4</text></g>
+</svg>
+      <figcaption>예시 평면. 같은 색 칸이 하루에 치는 구역이고, 굵은 선이 타설 이음입니다.</figcaption>
+    </figure>
+  </section>
   <div class="intro" id="intro">
     <h2>IFC 모델로 콘크리트 타설구획을<br>자동으로 나눕니다</h2>
     <ol class="steps">
@@ -620,6 +723,7 @@ body[data-stage="result"] .ifc-status.ok{display:block}
   </div>
 </main>
 </div>
+<div class="drop-veil" aria-hidden="true"><span>여기에 놓으면 모델을 읽습니다</span></div>
 <footer class="site-foot">KCS 14 20 10 기준 · 단위 m, ㎥ · 파일은 이 브라우저 안에서만 처리되며 어디에도 전송되지 않습니다.</footer>
 <script>
 // ===== CORE-START : 화면과 무관한 계산 로직 (규칙 1~6) =====
@@ -2251,7 +2355,7 @@ function compute() {
           ? `규칙을 모두 지키면서 가장 빨리 끝나는 계획은 ${N}구역(${N}일)입니다. 물량만 보면 ${M.Nmin}일이면 되지만, 곧은 절단선·코어 관통 금지 같은 규칙 때문에 ${M.Nmin === N - 1 ? M.Nmin + '일' : M.Nmin + '~' + (N - 1) + '일'}로는 나눌 수 없었습니다.`
           : `규칙을 모두 지키면서 가장 빨리 끝나는 계획은 ${N}구역(${N}일)으로, 물량상 최소 일수와 같습니다.`)
         : `${N}구역(${N}일) 기준으로 계산했습니다.`;
-      msgs.unshift(['ok', `${lead} 구획안 ${R.sols.length}개 중 추천안은 가장 큰 구역이 ${f1(s.maxVol)} ㎥(하루 한도 ${inp.P} ㎥)이고, 평균 대비 편차는 최대 ${(s.maxDev * 100).toFixed(1)}%입니다.`]);
+      msgs.unshift(['ok', `${lead} 구획안 ${R.sols.length}개 중 추천안은 가장 큰 구역이 ${f1(s.maxVol)} ㎥(하루 한도 ${inp.P} ㎥)이고, 물량 불균형은 ${(s.maxDev * 100).toFixed(0)}%(가장 치우친 구역이 평균과 이만큼 차이)입니다.`]);
       if (R.sols.length < 10) msgs.push(['warn', R.timedOut
         ? `제한 시간(${tm / 1000}초) 안에 찾은 구획안이 ${R.sols.length}개입니다. 층이 커서 모든 경우를 확인하지는 못했으니, 시간을 더 주면 더 나올 수 있습니다. <button type="button" class="inline-btn" data-time="40000">더 오래 찾기 (최대 40초)</button> <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`
         : `이 조건에서는 규칙을 모두 지키는 구획안이 ${R.sols.length}개뿐이라, ${R.sols.length === 1 ? '그 1개만' : `가능한 ${R.sols.length}개를 모두`} 보여드립니다. 구역 수를 늘리면 선택지가 넓어집니다. <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
@@ -2286,13 +2390,13 @@ function renderHead() {
   if (sol && state.auto) badge = sol.N > M.Nmin ? `<span class="rh-badge warn">규칙 때문에 최소보다 ${sol.N - M.Nmin}일 더</span>` : '<span class="rh-badge ok">물량상 최소 일수</span>';
   const q = state.quiet || [];
   const warns = q.length ? `<details class="warns"><summary>주의 ${q.length}</summary><ul>${q.map(t => `<li>${t}</li>`).join('')}</ul></details>` : '';
-  const kpi = sol ? [['총 타설량', f1(M.C), '㎥'], ['가장 큰 구역', f1(sol.maxVol), '㎥'], ['평균 대비 편차', (sol.maxDev * 100).toFixed(0), '%']] : [['총 타설량', f1(M.C), '㎥']];
+  const kpi = sol ? [['총 타설량', f1(M.C), '㎥'], ['가장 큰 구역', f1(sol.maxVol), '㎥'], ['물량 불균형', (sol.maxDev * 100).toFixed(0), '%']] : [['총 타설량', f1(M.C), '㎥']];
   $('#resHead').innerHTML = `
     <div class="rh-top"><div class="rh-cond">${cond}</div>
       <div class="rh-act">${warns}<button type="button" class="rb-btn" id="openDrawer">조건 바꾸기</button></div></div>
     <div class="rh-main">
       <div class="rh-title">${sol ? `<div class="rh-days"><b>${sol.N}</b><span>일</span></div><div class="rh-sub"><span class="rh-lbl">타설 계획</span><span class="rh-zones">${sol.N}개 구역 · 하루 1구역</span>${badge}</div>` : '<div class="rh-sub"><span class="rh-fail">구획할 수 없음</span><span class="rh-zones">아래 안내의 버튼으로 조건을 바꿔 보세요.</span></div>'}</div>
-      <dl class="res-kpis">${kpi.map(([a, b, c]) => `<div><dt>${a}</dt><dd>${b}<small>${c}</small></dd></div>`).join('')}</dl>
+      <dl class="res-kpis">${kpi.map(([a, b, c]) => `<div${a === '물량 불균형' ? ` title="가장 치우친 구역이 평균보다 ${b}% 차이 남 (0%면 모든 날 물량이 같음)"` : ''}><dt>${a}</dt><dd>${b}<small>${c}</small></dd></div>`).join('')}</dl>
     </div>`;
 }
 function renderModelCard() {
@@ -2363,9 +2467,9 @@ function renderAll(fresh) {
     $('#cands').innerHTML = state.R.sols.map((s, i) => `<button type="button" class="cand" data-i="${i}" aria-pressed="${i === state.sel}">
         <span class="ct">${altName(i)}${i === 0 ? '<i class="rec">추천</i>' : ''}${state.auto ? '' : `<small>${s.N}구역</small>`}</span>
         ${drawMini(M, s)}
-        <span class="cm"><span><em>최대</em><strong>${Math.round(s.maxVol)}<u>㎥</u></strong></span><span><em>편차</em><strong>${(s.maxDev * 100).toFixed(0)}<u>%</u></strong></span></span>
+        <span class="cm"><span><em>최대</em><strong>${Math.round(s.maxVol)}<u>㎥</u></strong></span><span title="물량 불균형: 가장 치우친 구역이 평균보다 ${(s.maxDev * 100).toFixed(0)}% 차이 남"><em>불균형</em><strong>${(s.maxDev * 100).toFixed(0)}<u>%</u></strong></span></span>
       </button>`).join('');
-    $('#altTable').innerHTML = `<thead><tr><th>후보</th><th>구역(일)</th><th>최대 편차</th><th>최대 구역 (㎥)</th><th>최소 구역 (㎥)</th><th>총 이음 (m)</th></tr></thead><tbody>` +
+    $('#altTable').innerHTML = `<thead><tr><th>후보</th><th>구역(일)</th><th>물량 불균형</th><th>최대 구역 (㎥)</th><th>최소 구역 (㎥)</th><th>총 이음 (m)</th></tr></thead><tbody>` +
       state.R.sols.map((s, i) => `<tr data-i="${i}" class="${i === state.sel ? 'sel' : ''}" tabindex="0"><td>${altName(i)}${i === 0 ? ' 추천' : ''}</td><td>${s.N}</td><td>${(s.maxDev * 100).toFixed(1)}%</td><td>${f1(s.maxVol)}</td><td>${f1(s.minVol)}</td><td>${f1(s.total)}</td></tr>`).join('') + '</tbody>';
     $('#detailTitle').innerHTML = `${altName(state.sel)}${state.sel === 0 ? '<i class="rec">추천</i>' : ''}`;
   }
@@ -2597,7 +2701,7 @@ function csvText() {
   sol.vol.forEach((v, k) => lines.push(`C${k + 1},${f1(v)},${f1(sol.area[k])},${(v / state.inp.P * 100).toFixed(0)},${f1(sol.joint[k])}`));
   lines.push(`합계,${f1(sol.vol.reduce((a, b) => a + b, 0))},${f1(state.M.totalArea)},,${f1(sol.total)}`);
   lines.unshift(`선택한 안,${altName(state.sel)}`);
-  lines.push('', '안,구역수(일),최대편차(%),최대구역(m3),최소구역(m3),총이음(m),특징');
+  lines.push('', '안,구역수(일),물량불균형(%),최대구역(m3),최소구역(m3),총이음(m),특징');
   state.R.sols.forEach((s, i) => lines.push(`${altName(i)},${s.N},${(s.maxDev * 100).toFixed(1)},${f1(s.maxVol)},${f1(s.minVol)},${f1(s.total)},${(s.tags || []).join(' / ')}`));
   lines.push('', '판정,개수,근거');
   basisRows(state.M).forEach(r => lines.push(`${r[0]},${r[1]},"${r[2]}"`));
@@ -2711,6 +2815,19 @@ const drop = $('#drop');
 ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
 ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
+// 화면 어디에 끌어다 놓아도 파일을 읽는다 (결과 화면 제외)
+let dragDepth = 0;
+const canDrop = () => document.body.dataset.stage !== 'result';
+document.addEventListener('dragenter', e => { if (!canDrop() || !e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return; dragDepth++; document.body.classList.add('dragging'); });
+document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
+document.addEventListener('dragover', e => { if (canDrop()) e.preventDefault(); });
+document.addEventListener('drop', e => {
+  dragDepth = 0; document.body.classList.remove('dragging');
+  if (!canDrop() || e.target.closest('#drop')) return;
+  e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f);
+});
+$('#heroSample').addEventListener('click', () => $('#ifcSample').click());
+$('#heroOpen').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#ifcFile').click(); } });
 $('#ifcSample').addEventListener('click', () => { if (!(num('P') > 0)) { $('#P').value = 35; } loadIFCText(SAMPLE_IFC, '예제_RC_업무시설.ifc'); });
 $('#ifcRun').addEventListener('click', () => {
   if (!requireP()) return;
