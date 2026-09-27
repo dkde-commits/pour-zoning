@@ -2151,11 +2151,36 @@ const IFCReader = (() => {
       if (thinW) W.push(`두께 ${minWallT} m 미만인 칸막이벽 ${thinW}개는 제외했습니다(구조벽만 반영).`);
       // 좌표를 슬래브 좌하단 기준으로 옮기고 mm 단위로 반올림
       const ox = Math.min(...allP.map(p => p[0])), oy = Math.min(...allP.map(p => p[1]));
+      // 레빗 그리드(IfcGrid)를 이름 그대로 읽는다
+      const gridRaw = [];
+      const bx0 = Math.min(...allP.map(p => p[0])) - 15, bx1 = Math.max(...allP.map(p => p[0])) + 15;
+      const by0 = Math.min(...allP.map(p => p[1])) - 15, by1 = Math.max(...allP.map(p => p[1])) + 15;
+      for (const gid of list('IFCGRID')) {
+        const ga = A(gid); if (!ga) continue;
+        const F = placement(R(ga[5]));
+        for (const axes of [ga[7], ga[8], ga[9]]) for (const ref of axes || []) {
+          const aa = A(R(ref)); if (!aa) continue;
+          const tag = String(aa[0] || '').trim(); const cid = R(aa[1]); if (!tag || !cid) continue;
+          let pts = null;
+          if (T(cid) === 'IFCPOLYLINE') pts = (A(cid)[0] || []).map(r => pt(R(r)));
+          else if (T(cid) === 'IFCLINE') { const la = A(cid); const p0 = pt(R(la[0])); const v = A(R(la[1])); const d = v ? dir(R(v[0])) : [1, 0, 0]; const m = v && typeof v[1] === 'number' ? v[1] : 1; pts = [p0, [p0[0] + d[0] * m, p0[1] + d[1] * m, 0]]; }
+          if (!pts || pts.length < 2) continue;
+          const w = pts.map(p => apply(F, [p[0], p[1], p[2] || 0])).map(p => rot([p[0] * lenScale, p[1] * lenScale]));
+          const p = w[0], q = w[w.length - 1], dx = Math.abs(q[0] - p[0]), dy = Math.abs(q[1] - p[1]);
+          if (dx < 1e-6 && dy < 1e-6) continue;
+          let o = null, c = 0;
+          if (dy > dx * 20) { o = 'v'; c = (p[0] + q[0]) / 2; if (c < bx0 || c > bx1) continue; }
+          else if (dx > dy * 20) { o = 'h'; c = (p[1] + q[1]) / 2; if (c < by0 || c > by1) continue; }
+          else continue; // 사선 그리드는 표시하지 않음
+          if (!gridRaw.some(g => g.tag === tag && g.o === o && Math.abs(g.c - c) < 0.05)) gridRaw.push({ tag, o, c });
+        }
+      }
       const r3 = v => Math.round(v * 1000) / 1000;
       const mvx = v => r3(v - ox), mvy = v => r3(v - oy);
       return {
         project: projName, floor: st.name, foundation: isFoundation(main.id) || t >= 0.6,
         slab: poly.map(p => [mvx(p[0]), mvy(p[1])]), slabs: slabRings.map(pg => pg.map(p => [mvx(p[0]), mvy(p[1])])), t: r3(t), C: Math.round((slabVol + beamVol) * 10) / 10,
+        grids: gridRaw.map(g => ({ tag: g.tag, o: g.o, c: g.o === 'v' ? mvx(g.c) : mvy(g.c) })),
         columns: columns.map(c => [mvx(c[0]), mvy(c[1])]),
         beams: beams.map(b => b.o === 'h' ? [mvx(b.a), mvy(b.c), mvx(b.b), mvy(b.c), r3(b.w)] : [mvx(b.c), mvy(b.a), mvx(b.c), mvy(b.b), r3(b.w)]),
         walls: walls.map(w => [mvx(w[0]), mvy(w[1]), mvx(w[2]), mvy(w[3])]),
@@ -2421,6 +2446,7 @@ function renderModelCard() {
     else if ((m = w.match(/작은 슬래브 조각 (\d+)개\(합계 ([\d.]+) ㎡\)/))) notes.push(`떨어진 작은 조각 ${m[1]}개(${m[2]} ㎡)는 구획에서 제외`);
   }
   for (const w of M.W) { const m = w.match(/구간 (\d+)곳은 큰보가 있다고 가정/); if (m) notes.push(`보가 빠진 기둥 사이 ${m[1]}곳은 큰보로 가정`); }
+  if (I) notes.push(state.ifcGrids && state.ifcGrids.length ? `그리드 ${state.ifcGrids.length}개를 레빗 이름 그대로 표시` : 'IFC에 그리드가 없어 기둥 줄 순서로 번호를 붙임(레빗 그리드 이름과 다를 수 있음)');
   $('#mcBody').innerHTML = `
     <div class="mc-hero"><b>${f1(M.C)}</b><span>㎥ · 이 층 콘크리트 총량</span></div>${bar}
     <dl class="mc-grid">
@@ -2483,28 +2509,34 @@ function renderAll(fresh) {
 function drawSVG(M, sol) {
   const P = (M.polys || [M.poly]).flat(), xs0 = Math.min(...P.map(p => p[0])), xs1 = Math.max(...P.map(p => p[0])), ys0 = Math.min(...P.map(p => p[1])), ys1 = Math.max(...P.map(p => p[1]));
   const span = Math.max(xs1 - xs0, ys1 - ys0), pad = span * 0.09 + 1.2, fs = Math.max(0.35, span / 42);
-  const base = [xs0 - pad, -(ys1 + pad), xs1 - xs0 + 2 * pad, ys1 - ys0 + 2 * pad];
+  const ex = fs * 2.4; // 비켜 놓은 그리드 동그라미 자리
+  const base = [xs0 - pad - ex, -(ys1 + pad + ex), xs1 - xs0 + 2 * pad + ex, ys1 - ys0 + 2 * pad + ex];
   state.baseVB = base;
   const vb = state.view || base;
   const Y = y => -y, o = [];
   const nsw = 'vector-effect="non-scaling-stroke"';
   o.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb.map(v => v.toFixed(3)).join(' ')}" role="img" aria-label="타설 구획 평면도" letter-spacing="0" font-family="Noto Sans KR, Apple SD Gothic Neo, Malgun Gothic, sans-serif">`);
   o.push(`<defs><pattern id="hatch" width="${fs}" height="${fs}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="${fs}" height="${fs}" fill="#F6D2CF"/><line x1="0" y1="0" x2="0" y2="${fs}" stroke="#C8423B" stroke-width="${fs * 0.25}"/></pattern></defs>`);
-  // 그리드 축
-  const ax = M.xs.map((x, i) => [x, 'X' + (i + 1)]), ay = M.ys.map((y, i) => [y, 'Y' + (i + 1)]);
-  const gapX = (xs1 - xs0 + 2 * pad) / 26, gapY = (ys1 - ys0 + 2 * pad) / 26;
-  let lastAX = -Infinity, lastAY = -Infinity;
+  // 그리드 축: IFC에 레빗 그리드가 있으면 이름·위치 그대로, 없으면 기둥 줄에서 만든 번호
+  const G = state.ifcGrids && state.ifcGrids.length ? state.ifcGrids : null;
+  const ax = G ? G.filter(g => g.o === 'v').map(g => [g.c, g.tag]) : M.xs.map((x, i) => [x, 'X' + (i + 1)]);
+  const ay = G ? G.filter(g => g.o === 'h').map(g => [g.c, g.tag]) : M.ys.map((y, i) => [y, 'Y' + (i + 1)]);
+  ax.sort((a, b) => a[0] - b[0]); ay.sort((a, b) => a[0] - b[0]);
+  const gapX = fs * 2.1, gapY = fs * 2.1;
+  // 붙어 있는 그리드는 이름을 지우지 않고 동그라미를 한 칸 바깥으로 비켜 놓는다
+  let lastX = -Infinity, rowX = 0, lastY = -Infinity, rowY = 0;
+  const bub = (cx, cy, t) => `<circle cx="${cx}" cy="${cy}" r="${fs * 0.95}" fill="var(--sheet)" stroke="var(--ink)" stroke-width="1" ${nsw}/><text x="${cx}" y="${cy}" font-size="${fs * (t.length > 3 ? 0.72 : 1)}" text-anchor="middle" dominant-baseline="central" fill="var(--ink)">${esc(t)}</text>`;
   for (const [x, t] of ax) {
-    o.push(`<line x1="${x}" y1="${Y(ys1 + pad * 0.55)}" x2="${x}" y2="${Y(ys0 - pad * 0.3)}" stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="6 3 1 3" ${nsw} opacity=".55"/>`);
-    if (x - lastAX < gapX) continue;
-    lastAX = x;
-    o.push(`<circle cx="${x}" cy="${Y(ys1 + pad * 0.72)}" r="${fs * 0.95}" fill="var(--sheet)" stroke="var(--ink)" stroke-width="1" ${nsw}/><text x="${x}" y="${Y(ys1 + pad * 0.72)}" font-size="${fs}" text-anchor="middle" dominant-baseline="central" fill="var(--ink)">${t}</text>`);
+    rowX = x - lastX < gapX ? (rowX + 1) % 2 : 0; lastX = x;
+    const cy = Y(ys1 + pad * 0.72) - rowX * fs * 2.2;
+    o.push(`<line x1="${x}" y1="${cy + fs * 0.95}" x2="${x}" y2="${Y(ys0 - pad * 0.3)}" stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="6 3 1 3" ${nsw} opacity=".55"/>`);
+    o.push(bub(x, cy, t));
   }
   for (const [y, t] of ay) {
-    o.push(`<line x1="${xs0 - pad * 0.55}" y1="${Y(y)}" x2="${xs1 + pad * 0.3}" y2="${Y(y)}" stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="6 3 1 3" ${nsw} opacity=".55"/>`);
-    if (y - lastAY < gapY) continue;
-    lastAY = y;
-    o.push(`<circle cx="${xs0 - pad * 0.72}" cy="${Y(y)}" r="${fs * 0.95}" fill="var(--sheet)" stroke="var(--ink)" stroke-width="1" ${nsw}/><text x="${xs0 - pad * 0.72}" y="${Y(y)}" font-size="${fs}" text-anchor="middle" dominant-baseline="central" fill="var(--ink)">${t}</text>`);
+    rowY = y - lastY < gapY ? (rowY + 1) % 2 : 0; lastY = y;
+    const cx = xs0 - pad * 0.72 - rowY * fs * 2.2;
+    o.push(`<line x1="${cx + fs * 0.95}" y1="${Y(y)}" x2="${xs1 + pad * 0.3}" y2="${Y(y)}" stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="6 3 1 3" ${nsw} opacity=".55"/>`);
+    o.push(bub(cx, Y(y), t));
   }
   // 셀 채우기 (가로 방향으로 같은 색 묶음)
   const { X, Y: YY, nx, ny, active, unitOf, units } = M;
@@ -2733,7 +2765,7 @@ document.addEventListener('click', e => {
 $('#run').addEventListener('click', run);
 $('#P').addEventListener('input', () => { if (num('P') > 0) { $('#P').classList.remove('invalid'); $('#pErr').hidden = true; } });
 $('#msgs').addEventListener('click', e => { const b = e.target.closest('.inline-btn'); if (!b) return; if (b.dataset.time) state.searchTime = +b.dataset.time; else if (b.dataset.p) $('#P').value = b.dataset.p; else $('#N').value = b.dataset.n; run(); });
-$('#example').addEventListener('click', () => { state.ifcInfo = null; fill(EXAMPLE); $('#formNote').textContent = '예제 값(가상의 보 구조 건물)입니다.'; run(); });
+$('#example').addEventListener('click', () => { state.ifcInfo = null; state.ifcGrids = null; fill(EXAMPLE); $('#formNote').textContent = '예제 값(가상의 보 구조 건물)입니다.'; run(); });
 document.querySelectorAll('[data-layer]').forEach(c => c.addEventListener('change', () => renderAll(false)));
 $('#cands').addEventListener('click', e => {
   const b = e.target.closest('.cand'); if (!b) return;
@@ -2780,7 +2812,7 @@ function loadIFCText(text, name) {
       const best = cand.slice().sort((a, b) => (b.count.beam - a.count.beam) || (b.elev - a.elev))[0];
       sel.value = best.id;
       $('#ifcPick').hidden = false;
-      $('#fileName').textContent = name; state.fileName = name; $('#fileChip').hidden = false; $('#modelCard').hidden = true; state.ifcInfo = null;
+      $('#fileName').textContent = name; state.fileName = name; $('#fileChip').hidden = false; $('#modelCard').hidden = true; state.ifcInfo = null; state.ifcGrids = null;
       setStage('pick');
       clearModelFields(`${name} — 층을 고르고 [이 층 구획하기]를 누르면 여기에 채워집니다.`);
       ifcStatus(`<span class="sum-chips"><span>층 ${IFCM.storeys.length}개</span><span>객체 ${IFCM.count.toLocaleString()}개</span></span>`, 'ok');
@@ -2838,6 +2870,7 @@ $('#ifcRun').addEventListener('click', () => {
       ifcStatus(`<b>${esc(r.floor)}</b> 바닥은 두께 ${Math.round(r.t * 1000)} mm의 <b>기초판(매트기초)</b>입니다. 이 프로그램의 규칙은 보가 받치는 슬래브용이라 기초판에는 적용하지 않습니다. 기초판은 매스콘크리트 타설계획으로 따로 검토하세요. 위층(지하 1층 이상)을 골라 주세요.`, 'err');
       return;
     }
+    state.ifcGrids = r.grids || [];
     state.ifcInfo = { cols: r.columns.length, beams: r.beams.length, walls: r.walls.length, open: r.openings.length, W: r.W, slabVol: r.info.slabVol, beamVol: r.info.beamVol };
     fill({ project: r.project, floor: r.floor, slab: r.slab, slabs: r.slabs, t: r.t, C: r.C, columns: r.columns, beams: r.beams, walls: r.walls, openings: r.openings });
     ifcStatus(`<span class="sum-chips"><b>${esc(r.floor)}</b><span>기둥 ${r.columns.length}</span><span>보 ${r.beams.length}</span><span>구조벽 ${r.walls.length}</span><span>개구부 ${r.openings.length}</span><span>${f1(r.C)} ㎥</span></span>`, 'ok');
