@@ -1047,6 +1047,39 @@ function analyze(inp) {
     for (let q = 0; q < list.length; q++) for (const [v] of units[list[q]].nb) if (comp[v] < 0) { comp[v] = comps.length; list.push(v); }
     comps.push(list);
   }
+  // 본 바닥과 떨어진 작은 바닥(가장 큰 덩어리의 25% 미만)은 가장 가까운 본 바닥 조각과 '같은 날' 묶는다.
+  // 서로 맞닿지 않으므로 이음은 생기지 않고, 규칙 6(한 구역 연결)은 '연속 타설 면'에 대한 것이라 따로 치는 작은 판에는 해당하지 않는다.
+  const linked = [];
+  if (comps.length > 1) {
+    const cvol = comps.map(c => c.reduce((a, u) => a + units[u].vol, 0));
+    // 묶는 기준은 하루 한도와 무관하게 '가장 큰 덩어리의 25% 미만'으로 둔다 (한도를 바꿔도 전제가 흔들리지 않게)
+    const limit = 0.25 * Math.max(...cvol);
+    const bigIdx = cvol.map((v, i) => i).filter(i => cvol[i] >= limit);
+    if (!bigIdx.length) bigIdx.push(cvol.indexOf(Math.max(...cvol)));
+    const bigUnits = bigIdx.flatMap(i => comps[i]);
+    comps.forEach((c, i) => {
+      if (bigIdx.includes(i)) return;
+      let best = null;
+      for (const a of c) for (const b of bigUnits) {
+        const d = Math.hypot(units[a].cx - units[b].cx, units[a].cy - units[b].cy);
+        if (!best || d < best.d) best = { a, b, d };
+      }
+      units[best.a].nb.set(best.b, 0); units[best.b].nb.set(best.a, 0);
+      units[best.a].nbl.set(best.b, new Set()); units[best.b].nbl.set(best.a, new Set());
+      linked.push({ units: c.slice(), to: best.b, vol: cvol[i] });
+    });
+    if (linked.length) {
+      // 연결 후 덩어리 다시 계산
+      comp.fill(-1); comps.length = 0;
+      for (let s0 = 0; s0 < units.length; s0++) {
+        if (comp[s0] >= 0) continue;
+        const list = [s0]; comp[s0] = comps.length;
+        for (let q = 0; q < list.length; q++) for (const [v] of units[list[q]].nb) if (comp[v] < 0) { comp[v] = comps.length; list.push(v); }
+        comps.push(list);
+      }
+      W.push(`본 바닥과 떨어진 작은 바닥 ${linked.length}곳(합계 ${linked.reduce((a, x) => a + x.vol, 0).toFixed(1)} ㎥)은 가장 가까운 구역과 같은 날 치도록 묶었습니다.`);
+    }
+  }
   const why = { mid: 0, jn: 0, cant: 0, wall: 0, open: 0 }; let okN = 0, ngN = 0;
   for (const e of edges) if (e.cand) { if (e.ok) okN++; else { ngN++; if (why[e.why] !== undefined) why[e.why]++; } }
   const maxUnit = units.reduce((a, u, i) => u.vol > units[a].vol ? i : a, 0);
@@ -1060,7 +1093,7 @@ function analyze(inp) {
     ? Math.abs(b.c - y) <= TOL && x >= b.a - TOL && x <= b.b + TOL
     : Math.abs(b.c - x) <= TOL && y >= b.a - TOL && y <= b.b + TOL);
   return {
-    E, W, poly, polys, xs, ys, cs, beams, gtol, lines, cutX, cutY, X, Y, nx, ny, inPoly, active, blockKind, cantCell, edges, unitOf, units, comps,
+    E, W, poly, polys, xs, ys, cs, beams, gtol, lines, cutX, cutY, X, Y, nx, ny, inPoly, active, blockKind, cantCell, edges, unitOf, units, comps, linked,
     totalArea, C, Cgiven: inp.C > 0, Nmin: Math.ceil(C / inp.P - 1e-9), maxUnit, onBeam,
     stats: { okN, ngN, why }, walls, openings, P: inp.P
   };
@@ -1501,7 +1534,7 @@ function feasibilityScan(M, nFrom, nTo, tEach) {
   for (let n = Math.max(1, nFrom); n <= Math.min(M.units.length, nTo); n++) {
     if (n < M.comps.length) { out.push({ n, best: null }); continue; }
     const R = recommend(M, n, 1e12, 60, 5, tEach);
-    out.push({ n, best: R.sols.length ? Math.min(...R.sols.map(s => s.maxVol)) : null });
+    out.push({ n, best: R.sols.length ? Math.min(...R.sols.map(s => s.maxVol)) : null, sols: R.sols });
   }
   return out;
 }
@@ -2302,7 +2335,9 @@ function run() {
 }
 
 function suggestP(M) {
-  const scan = state.scan && state.scan.M === M ? state.scan : Object.assign(feasibilityScan(M, 2, Math.max(M.Nmin + 7, 8), 700), { M });
+  let scan = state.scan && state.scan.M === M ? state.scan : Object.assign(feasibilityScan(M, 2, Math.max(M.Nmin + 7, 8), 700), { M });
+  const sig = JSON.stringify({ ...state.inp, P: 0, N: 0 });
+  if (!state.scanCache || state.scanCache.sig !== sig) state.scanCache = { sig, scan };
   const ok = scan.filter(x => x.best !== null);
   if (!ok.length) return null;
   const b = ok.reduce((a, x) => x.best < a.best ? x : a);
@@ -2347,11 +2382,21 @@ function compute() {
       if (!R.sols.length) {
         // 2) 한도 없이 구역 수별로 규칙상 가능한지, 가장 큰 구역을 얼마까지 줄일 수 있는지 훑는다
         const scan = feasibilityScan(M, 2, Math.max(N + 7, 8), 700);
+        // 같은 입력(한도만 다름)으로 전에 찾아 둔 안이 있으면 합친다 → 제안 한도로 다시 계산하면 반드시 그 안이 나온다
+        const sig = JSON.stringify({ ...inp, P: 0, N: 0 });
+        if (state.scanCache && state.scanCache.sig === sig) for (const x of scan) {
+          const old = state.scanCache.scan.find(y => y.n === x.n);
+          if (old && old.sols.length) { x.sols = x.sols.concat(old.sols); x.best = Math.min(x.best === null ? Infinity : x.best, old.best); }
+        }
+        state.scanCache = { sig, scan };
         state.scan = Object.assign(scan, { M });
-        const cand = scan.filter(x => x.n > N && x.best !== null && x.best <= inp.P + 1e-6).map(x => x.n);
+        const cand = scan.filter(x => x.n >= N && x.best !== null && x.best <= inp.P + 1e-6).map(x => x.n);
         for (const n of cand.slice(0, 3)) {
           const r2 = recommend(M, n, inp.P, inp.restarts, 10, Math.min(tm, 5000)); tried.push(n);
           if (r2.sols.length) { N = n; R = r2; break; }
+          // 다시 찾지 못해도, 훑을 때 이미 찾은 안 중 한도를 지키는 것이 있으면 그대로 쓴다
+          const keep = scan.find(x => x.n === n).sols.filter(s => s.maxVol <= inp.P + 1e-6);
+          if (keep.length) { N = n; R = { ...r2, sols: keep, timedOut: false }; break; }
         }
       }
       if (R.sols.length && R.sols.length < 10) { const r3 = recommend(M, N, inp.P, inp.restarts, 10, tm); if (r3.sols.length > R.sols.length) R = r3; }
@@ -2616,6 +2661,12 @@ function drawSVG(M, sol) {
       o.push(`<text x="${best[0]}" y="${Y(best[1]) - fs * 0.15}" font-size="${fs * 1.45}" font-weight="700" text-anchor="middle" fill="#16191C" ${halo}>C${k + 1}</text>`);
       o.push(`<text x="${best[0]}" y="${Y(best[1]) + fs * 1.3}" font-size="${fs * 1.0}" font-weight="600" text-anchor="middle" fill="#16191C" ${halo}>${f1(sol.vol[k])} ㎥</text>`);
     }
+  }
+  if (sol && M.linked && M.linked.length) for (const L of M.linked) {
+    const halo = `paint-order="stroke" stroke="#FFFFFF" stroke-opacity=".85" stroke-width="${fs * 0.12}" stroke-linejoin="round"`;
+    let a = 0, sx = 0, sy = 0; for (const u of L.units) { const U0 = M.units[u]; a += U0.area; sx += U0.cx * U0.area; sy += U0.cy * U0.area; }
+    const k = sol.z[L.units[0]], cx = sx / a, cy = sy / a;
+    o.push(`<text x="${cx}" y="${Y(cy)}" font-size="${fs * 0.9}" font-weight="700" text-anchor="middle" dominant-baseline="central" fill="#16191C" ${halo}><title>떨어진 바닥 — C${k + 1}과 같은 날 함께 타설</title>C${k + 1}</text>`);
   }
   o.push('</svg>');
   return o.join('');
