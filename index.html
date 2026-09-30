@@ -1415,6 +1415,14 @@ function solve(M, N, P, restarts, seed, deadline) {
   const rnd = mulberry32(seed || 20261010), T = M.C / N, raw = []; let overP = 0, bentN = 0, tinyN = 0;
   const stop = deadline || (Date.now() + 4000);
   // (a) 절단선 조합에서 바로 만든 배정
+  // 결정적 이등분 탐색 — 가능한 안이 있으면 반드시 하나 이상 넣는다
+  // 불가능한 조건에서 예산을 다 쓰지 않도록 남은 시간의 20%만 (세 가지 순서에 나눠)
+  const exStop = Date.now() + Math.max(150, (stop - Date.now()) * 0.2);
+  for (const ord of [0, 1, 2]) {
+    if (Date.now() > exStop) break;
+    const r = gExact(M, N, P, Math.min(exStop, Date.now() + Math.max(50, (exStop - Date.now()) / (3 - ord))), null, ord); if (!r.z) continue;
+    const ev = evaluate(M, r.z, N, T); if (ev.maxVol <= P + 1e-6 && !ev.bends.length && !hasTinyCut(M, r.z, ev.vol, T)) raw.push({ z: Array.from(r.z), ...ev });
+  }
   // (문서 v2 1.9) 씨앗 확장 — 네 방향 시도
   // 큰 모델에서는 걸어간 거리 계산이 무거워 시간 예산 안에서만 시도
   if (M.units.length * N <= 8000) for (const p of docPlans(M, N, P)) { if (!hasTinyCut(M, p.z, p.vol, T)) raw.push(p); }
@@ -1883,6 +1891,95 @@ function rezoneFull(M, done, P, stopAt, Pday) {
     }
   }
   return { z: null, msg: '남은 영역을 규칙대로 나눌 방법을 찾지 못했습니다.' };
+}
+
+
+// ===== 결정적 이등분 탐색 =====
+// 유효한 분할(곧은 이음, T자 허용)은 '곧은 선으로 영역을 끝까지 가르기'의 반복이다.
+// 영역·구역 수 쌍마다 한 번만 계산(기억)하며 가능한 가르기를 모두 따져, 있으면 반드시 찾는다(시간 제한 안에서).
+function gExact(M, N, P, stop, compsIn, order) {
+  const U = M.units, COMPS = compsIn || M.comps, memo = new Map();
+  // 너무 작은 구역(평균의 10% 미만, 1㎥ 미만)은 만들지 않는다 — 떨어진 덩어리 전체는 예외
+  const totV = COMPS.reduce((a, c) => a + c.reduce((s, u) => s + U[u].vol, 0), 0), minV = Math.max(1, 0.1 * totV / N);
+  const whole = new Set(COMPS.map(c => c.slice().sort((a, b) => a - b).join(',')));
+  const volOf = reg => { let v = 0; for (const u of reg) v += U[u].vol; return v; };
+  let timedOut = false;
+  // 선 하나로 영역을 가른 결과: 두 덩어리 이상 (코어·개구부 때문에 셋 이상으로 갈릴 수 있음)
+  const splitK = (reg, set, line) => {
+    const lab = new Map(), parts = [];
+    for (const s0 of reg) { if (lab.has(s0)) continue; const idx = parts.length; lab.set(s0, idx); const st = [s0], part = [s0];
+      while (st.length) { const u = st.pop(); for (const [v, ids] of U[u].nbl) { if (!set.has(v) || lab.has(v) || ids.has(line)) continue; lab.set(v, idx); st.push(v); part.push(v); } }
+      parts.push(part); if (parts.length > 6) return null; }
+    return parts.length >= 2 ? parts : null;
+  };
+  // 덩어리들에 구역 수를 나눠 주는 모든 방법을 (필요 최소부터) 차례로
+  function* allocs(vols, n) {
+    const need = vols.map(v => Math.max(1, Math.ceil(v / P - 1e-9)));
+    let extra = n - need.reduce((a, b) => a + b, 0); if (extra < 0) return;
+    const cur = need.slice();
+    function* go(i, left) {
+      if (i === vols.length - 1) { cur[i] = need[i] + left; yield cur.slice(); return; }
+      for (let e = 0; e <= left; e++) { cur[i] = need[i] + e; yield* go(i + 1, left - e); }
+    }
+    yield* go(0, extra);
+  }
+  function rec(reg, n) {
+    const vol = volOf(reg);
+    const skey = reg.slice().sort((a, b) => a - b).join(',');
+    if (n === 1) return vol <= P + 1e-6 && (vol >= minV - 1e-9 || whole.has(skey)) ? [reg] : null;
+    if (vol > n * P + 1e-6 || vol < n * minV - 1e-9 || reg.length < n) return null;
+    const key = n + '|' + skey;
+    if (memo.has(key)) return memo.get(key);
+    if (Date.now() > stop) { timedOut = true; return null; }
+    const set = new Set(reg), lines = new Set();
+    for (const u of reg) for (const [v, ids] of U[u].nbl) if (set.has(v)) for (const id of ids) lines.add(id);
+    const opts = [];
+    for (const line of lines) {
+      const parts = splitK(reg, set, line); if (!parts) continue;
+      const pv = parts.map(volOf);
+      for (const al of allocs(pv, n)) opts.push({ parts, al, sc: Math.max(...pv.map((v, q) => v / al[q])), line });
+    }
+    opts.sort(order === 1 ? (a, b) => a.line - b.line || a.sc - b.sc : order === 2 ? (a, b) => b.line - a.line || a.sc - b.sc : (a, b) => a.sc - b.sc);
+    for (const o of opts) {
+      let res = [];
+      for (let q = 0; q < o.parts.length; q++) { const r = rec(o.parts[q], o.al[q]); if (!r) { res = null; break; } res = res.concat(r); }
+      if (res) { memo.set(key, res); return res; }
+      if (timedOut) return null;
+    }
+    if (!timedOut) memo.set(key, null);
+    return null;
+  }
+  const comps = COMPS.map(c => c.slice()), cv = comps.map(volOf);
+  for (const al of allocs(cv, N)) {
+    const z = new Int32Array(U.length).fill(-1); let k = 0, ok = true;
+    for (let i = 0; i < comps.length && ok; i++) { const r = rec(comps[i], al[i]); if (!r) { ok = false; break; } for (const g of r) { for (const u of g) z[u] = k; k++; } }
+    if (ok) return { z, timedOut };
+    if (timedOut) break;
+  }
+  return { z: null, timedOut };
+}
+
+// 한도 P로 나눌 수 있는지 (구역 수 nFrom부터 몇 개 늘려 보며). 찾은 안을 돌려준다
+function exactFeasible(M, P, nFrom, span, tEach) {
+  const n0 = Math.max(nFrom, M.comps.length, Math.ceil(M.C / P - 1e-9), M.units.filter(u => u.vol > P / 2 + 1e-9).length);
+  if (M.units.some(u => u.vol > P + 1e-9)) return { plan: null, timedOut: false };
+  let anyTO = false;
+  for (let n = n0; n <= Math.min(M.units.length, n0 + span); n++) {
+    const r = gExact(M, n, P, Date.now() + tEach); if (r.timedOut) anyTO = true;
+    if (r.z) { const ev = evaluate(M, r.z, n, M.C / n); if (!ev.bends.length && !hasTinyCut(M, r.z, ev.vol, M.C / n)) return { plan: { n, z: Array.from(r.z), ...ev }, timedOut: false }; }
+  }
+  return { plan: null, timedOut: anyTO };
+}
+// 실제로 가능한 가장 낮은 하루 한도 (이분 탐색, 찾은 안으로 뒷받침)
+function minFeasibleP(M, hiHint, budgetMs) {
+  const stop = Date.now() + budgetMs;
+  let lo = Math.max(...M.units.map(u => u.vol)), hi = hiHint > 0 ? hiHint : M.C, best = null;
+  const top = exactFeasible(M, hi, 1, 6, 800).plan; if (top) best = { P: hi, plan: top }; else return null;
+  for (let it = 0; it < 12 && hi - lo > 0.5 && Date.now() < stop; it++) {
+    const mid = (lo + hi) / 2, r = exactFeasible(M, mid, 1, 4, 400).plan;
+    if (r) { hi = mid; best = { P: mid, plan: r }; } else lo = mid;
+  }
+  return best;
 }
 
 function feasibilityScan(M, nFrom, nTo, tEach) {
@@ -2413,10 +2510,11 @@ const IFCReader = (() => {
       const Gr = id => {
         const g = G(id); if (!g) return null;
         if (!theta) return g;
-        if (g._rt === theta) return g._r;
+        // 캐시는 회전각과 회전 중심이 모두 같을 때만 재사용 (층마다 중심이 다르다)
+        const rk = theta + '|' + rx + '|' + ry; if (g._rk === rk) return g._r;
         const mn = [Infinity, Infinity, g.min[2]], mx = [-Infinity, -Infinity, g.max[2]];
         for (const p of g.pts) { const q = rot(p); if (q[0] < mn[0]) mn[0] = q[0]; if (q[1] < mn[1]) mn[1] = q[1]; if (q[0] > mx[0]) mx[0] = q[0]; if (q[1] > mx[1]) mx[1] = q[1]; }
-        g._rt = theta; g._r = { min: mn, max: mx, ext: g.ext };
+        g._rk = rk; g._r = { min: mn, max: mx, ext: g.ext };
         return g._r;
       };
       if (theta) W.push(`모델이 X·Y축에서 ${(theta * 180 / Math.PI).toFixed(1)}° 돌아가 있어, 그리드에 맞게 돌려서 계산했습니다.`);
@@ -2693,17 +2791,16 @@ function run() {
 }
 
 function suggestP(M) {
-  let scan = state.scan && state.scan.M === M ? state.scan : Object.assign(feasibilityScan(M, 2, Math.max(M.Nmin + 7, 8), 700), { M });
   const sig = JSON.stringify({ ...state.inp, P: 0, N: 0 });
-  if (!state.scanCache || state.scanCache.sig !== sig) state.scanCache = { sig, scan };
-  const ok = scan.filter(x => x.best !== null);
-  if (!ok.length) return null;
-  const b = ok.reduce((a, x) => x.best < a.best ? x : a);
-  return { P: Math.ceil(b.best + 0.5), N: b.n };
+  if (state.sugCache && state.sugCache.sig === sig) return state.sugCache.v;
+  const r = minFeasibleP(M, M.C, 9000);
+  const v = r ? { P: Math.ceil(r.P * 10 - 1e-9) / 10, N: r.plan.n } : null;
+  if (v) v.P = Math.ceil(v.P); // 보기 쉽게 올림한 정수 ㎥
+  state.sugCache = { sig, v }; return v;
 }
 function suggestTxt(sg) {
-  if (!sg) return ' 규칙을 지키면서 나눌 수 있는 방법을 찾지 못했습니다. 모델의 보·벽 배치를 확인해 주세요.';
-  return ` 규칙을 지키며 나누려면 하루 최소 약 ${sg.P} ㎥가 필요합니다. <button type="button" class="inline-btn" data-p="${sg.P}">한도 ${sg.P} ㎥로 다시 계산</button>`;
+  if (!sg) return ' 규칙을 지키며 나누는 방법을 찾지 못했습니다. 모델의 보·벽 배치를 확인해 주세요.';
+  return ` 하루 ${sg.P} ㎥이면 규칙을 모두 지키는 구획안이 있습니다(실제로 찾은 안 기준). <button type="button" class="inline-btn" data-p="${sg.P}">한도 ${sg.P} ㎥로 다시 계산</button>`;
 }
 function compute() {
   const { inp, errs } = readInputs();
@@ -2738,23 +2835,13 @@ function compute() {
       // 1) 하한 구역 수로 먼저 시도 (대부분 여기서 끝남)
       R = recommend(M, N, inp.P, inp.restarts, 10, Math.min(3000, tm)); tried.push(N);
       if (!R.sols.length) {
-        // 2) 한도 없이 구역 수별로 규칙상 가능한지, 가장 큰 구역을 얼마까지 줄일 수 있는지 훑는다
-        const scan = feasibilityScan(M, 2, Math.max(N + 7, 8), 700);
-        // 같은 입력(한도만 다름)으로 전에 찾아 둔 안이 있으면 합친다 → 제안 한도로 다시 계산하면 반드시 그 안이 나온다
-        const sig = JSON.stringify({ ...inp, P: 0, N: 0 });
-        if (state.scanCache && state.scanCache.sig === sig) for (const x of scan) {
-          const old = state.scanCache.scan.find(y => y.n === x.n);
-          if (old && old.sols.length) { x.sols = x.sols.concat(old.sols); x.best = Math.min(x.best === null ? Infinity : x.best, old.best); }
-        }
-        state.scanCache = { sig, scan };
-        state.scan = Object.assign(scan, { M });
-        const cand = scan.filter(x => x.n >= N && x.best !== null && x.best <= inp.P + 1e-6).map(x => x.n);
-        for (const n of cand.slice(0, 3)) {
-          const r2 = recommend(M, n, inp.P, inp.restarts, 10, Math.min(tm, 5000)); tried.push(n);
-          if (r2.sols.length) { N = n; R = r2; break; }
-          // 다시 찾지 못해도, 훑을 때 이미 찾은 안 중 한도를 지키는 것이 있으면 그대로 쓴다
-          const keep = scan.find(x => x.n === n).sols.filter(s => s.maxVol <= inp.P + 1e-6);
-          if (keep.length) { N = n; R = { ...r2, sols: keep, timedOut: false }; break; }
+        // 2) 결정적 이등분 탐색으로 규칙을 지키는 가장 적은 구역 수를 찾는다
+        const f = exactFeasible(M, inp.P, N + 1, 8, 1200);
+        state.exactTO = f.timedOut;
+        if (f.plan) {
+          const r2 = recommend(M, f.plan.n, inp.P, inp.restarts, 10, Math.min(tm, 5000)); tried.push(f.plan.n);
+          N = f.plan.n; R = r2.sols.length ? r2 : { ...r2, sols: [f.plan], timedOut: false };
+          if (!R.sols.some(s => s.z.join() === f.plan.z.join())) R.sols.push(f.plan);
         }
       }
       if (R.sols.length && R.sols.length < 10) { const r3 = recommend(M, N, inp.P, inp.restarts, 10, tm); if (r3.sols.length > R.sols.length) R = r3; }
@@ -2771,7 +2858,7 @@ function compute() {
       const whyTxt = why.length ? ` 검토한 안 가운데 ${why.join(', ')}.` : '';
       const more = R.timedOut ? ` <button type="button" class="inline-btn" data-time="40000">더 오래 찾기 (최대 40초)</button>` : '';
       const lead = auto
-        ? `하루 한도 ${inp.P} ㎥로는 규칙을 모두 지키는 구획안이 없습니다.`
+        ? `하루 한도 ${inp.P} ㎥로는 규칙을 모두 지키는 구획안을 찾지 못했습니다.${state.exactTO ? ' 층이 복잡해 모든 경우를 확인하지는 못했습니다.' : ''}`
         : R.timedOut ? `제한 시간(${tm / 1000}초) 안에 ${N}구역으로 규칙을 모두 지키는 구획안을 찾지 못했습니다. 층이 커서 모든 경우를 확인하지 못한 것이라, 시간을 더 주면 나올 수 있습니다.` : `${N}구역으로는 규칙을 모두 지키는 구획안을 찾지 못했습니다.${whyTxt}`;
       if (auto) { const sg = suggestP(M); msgs.unshift(['err', lead + suggestTxt(sg)]); }
       else msgs.unshift(['err', `${lead} 구역 수를 늘려도 선택지가 넓어집니다.${more} <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
