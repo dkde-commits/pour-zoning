@@ -501,6 +501,15 @@ tr.donerow td{color:var(--muted)}
 .rebar-note{color:#B8480A;font-weight:600}
 .rp-note{font-size:12px;color:var(--muted);flex:1;min-width:220px}
 .drawing.recmode{cursor:crosshair}
+
+.cand.dom{opacity:.5}
+.sortseg button{white-space:nowrap}
+.cm.cm3{grid-template-columns:repeat(3,auto)}
+.dom-tag{font-style:normal;font-size:11px;font-weight:600;color:var(--muted);background:var(--field);border-radius:999px;padding:2px 8px;margin-left:6px}
+.rec-why{font-size:12.5px;color:var(--muted);margin:-4px 0 10px;line-height:1.55}
+.sens-note{font-size:12px;color:var(--muted);margin:-4px 2px 10px;line-height:1.5}
+.beam-note{color:#B8480A;font-weight:600}
+.rb-btn small{font-size:11px;font-weight:500;opacity:.75;margin-left:4px}
 </style>
 </head>
 <body data-stage="start">
@@ -655,6 +664,9 @@ tr.donerow td{color:var(--muted)}
       <div><label for="cantMin">캔틸레버로 보는 내민 길이 (m)</label><input id="cantMin" type="number" step="0.05" min="0" value="0.6"></div>
       <div><label for="gridTol">기둥 그리드 묶는 오차 (m)</label><input id="gridTol" type="number" step="0.05" min="0" value="0.3"></div>
       <div><label for="minWallT">구조벽으로 볼 최소 두께 (m)</label><input id="minWallT" type="number" step="0.05" min="0" value="0.2"></div>
+      <div class="chk"><label><input type="checkbox" id="inclBeam"> 보 물량까지 넣어 구획 (기본: 슬래브만 — 연구범위 문서 6장)</label></div>
+      <div><label for="tolC">추천 허용폭 — 중단선 커버율 (%p)</label><input id="tolC" type="number" step="1" min="0" value="10"></div>
+      <div><label for="tolJ">추천 허용폭 — 이음 총길이 (%)</label><input id="tolJ" type="number" step="1" min="0" value="10"></div>
       <div><label for="truck">트럭 적재량 (㎥)</label><input id="truck" type="number" step="0.5" min="1" value="6"></div>
       <div><label for="tieTol">대표 선 동률 허용폭 (㎥)</label><input id="tieTol" type="number" step="0.1" min="0" value="0.5"></div>
       <div><label for="pourDir">진행 방향</label><select id="pourDir"><option value="auto">자동 (네 방향 계산 후 추천)</option><option value="X+">X+ (왼쪽 → 오른쪽)</option><option value="X-">X− (오른쪽 → 왼쪽)</option><option value="Y+">Y+ (아래 → 위)</option><option value="Y-">Y− (위 → 아래)</option></select></div>
@@ -700,7 +712,8 @@ tr.donerow td{color:var(--muted)}
     <div class="md">
       <section class="md-list" id="altBlock" aria-label="구획안 목록">
         <div class="md-list-h"><h3 class="cand-h">구획안 <span id="candCount"></span></h3></div>
-        <div class="sortseg" role="group" aria-label="정렬"><button type="button" data-sort="min" aria-pressed="true">최소 구역 물량 큰 순</button><button type="button" data-sort="joint" aria-pressed="false">이음 길이 합 짧은 순</button></div>
+        <div class="sortseg" role="group" aria-label="정렬"><button type="button" data-sort="rec" aria-pressed="true" title="제안 기준: 커버율 → 이음 → 균형 (허용폭 안이면 동률)">추천</button><button type="button" data-sort="bal" aria-pressed="false" title="물량 균형 높은 순">균형</button><button type="button" data-sort="joint" aria-pressed="false" title="이음 총길이 짧은 순">이음</button><button type="button" data-sort="cov" aria-pressed="false" title="비상중단선 커버율 높은 순">커버율</button></div>
+        <p class="sens-note" id="sensNote"></p>
         <div class="cands" id="cands"></div>
         <div class="tablewrap" hidden><table class="alts" id="altTable"></table></div>
       </section>
@@ -716,7 +729,8 @@ tr.donerow td{color:var(--muted)}
             <span class="layer-note" id="layerNote"></span>
           </div>
         </div>
-        <div class="rec-bar"><button type="button" class="rb-btn" id="recToggle" aria-pressed="false">시공 중 기록·재분할</button><span class="rec-hint" id="recHint">실제로 친 범위를 기록하고 남은 영역을 다시 나눕니다 (3장)</span></div>
+        <p class="rec-why" id="recWhy"></p>
+        <div class="rec-bar"><button type="button" class="rb-btn" id="recToggle" aria-pressed="false">시공 중 기록·재분할 <small>부가 기능 · 연구범위 밖</small></button><span class="rec-hint" id="recHint">연구범위(계획 단계) 밖의 부가 기능입니다. 실제로 친 범위를 기록하고 남은 영역을 다시 나눕니다.</span></div>
         <div class="rec-panel" id="recPanel" hidden></div>
         <input type="file" id="recFile" accept=".json,application/json" hidden>
         <div class="sheet" id="sheet">
@@ -736,6 +750,7 @@ tr.donerow td{color:var(--muted)}
         </div>
         <div class="dt-zones" id="zoneBlock">
           <div class="tablewrap"><table id="zoneTable"></table></div>
+          <p class="hint beam-note" id="beamNote"></p>
           <p class="hint rebar-note" id="rebarNote"></p>
         </div>
         <details class="dt-more">
@@ -989,7 +1004,7 @@ function analyze(inp) {
   const slabC = new Uint8Array(nx * ny);
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) if (pipAny((X[i] + X[i + 1]) / 2, (Y[j] + Y[j + 1]) / 2)) slabC[idx(i, j)] = 1;
   const nearSlab = k => { const i = k % nx, j = (k - i) / nx; return slabC[k] || (i > 0 && slabC[k - 1]) || (i < nx - 1 && slabC[k + 1]) || (j > 0 && slabC[k - nx]) || (j < ny - 1 && slabC[k + nx]); };
-  let bridged = 0;
+  let bridged = 0; const bridgedC = new Uint8Array(nx * ny);
   // 보 자리 중 '보를 가로지르는 방향으로 양쪽 모두 슬래브'인 틈만 메운다. 슬래브 밖으로 나온 보 자리는 채우지 않는다
   // (채우면 바깥에 가는 띠가 생겨 캔틸레버로 잡히거나 절단선이 슬래브 끝까지 못 간다)
   const ci = (v, A) => { let lo = 0, hi = A.length - 2; while (lo < hi) { const m = (lo + hi + 1) >> 1; if ((A[m] + A[m + 1]) / 2 <= v) lo = m; else hi = m - 1; } return lo; };
@@ -1004,14 +1019,15 @@ function analyze(inp) {
     for (let a = 0; a < nA; a++) {
       const m = (A[a] + A[a + 1]) / 2; if (m < b.a - 1e-6 || m > b.b + 1e-6) continue;
       if (!slabC[at(a, b0 - 1)] || !slabC[at(a, b1 + 1)]) continue; // 양쪽이 슬래브일 때만
-      for (let q = b0; q <= b1; q++) { const k = at(a, q); if (!slabC[k]) { slabC[k] = 1; bridged += (X[k % nx + 1] - X[k % nx]) * (Y[(k - k % nx) / nx + 1] - Y[(k - k % nx) / nx]); } }
+      for (let q = b0; q <= b1; q++) { const k = at(a, q); if (!slabC[k]) { slabC[k] = 1; bridgedC[k] = 1; bridged += (X[k % nx + 1] - X[k % nx]) * (Y[(k - k % nx) / nx + 1] - Y[(k - k % nx) / nx]); } }
     }
   }
-  // 모델링 오차로 생긴 12 cm 미만 틈은 양쪽이 바닥이면 메운다
+  // 모델링 오차로 생긴 1 cm 미만 틈만 양쪽이 바닥이면 메운다.
+  // 신축이음은 폭이 최소 25 mm 이상이라(NRC Technical Report 65) 이 기준으로는 이어지지 않는다
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     const k = idx(i, j); if (slabC[k]) continue;
-    const gx = X[i + 1] - X[i] < 0.12 && i > 0 && i < nx - 1 && slabC[k - 1] && slabC[k + 1];
-    const gy = Y[j + 1] - Y[j] < 0.12 && j > 0 && j < ny - 1 && slabC[k - nx] && slabC[k + nx];
+    const gx = X[i + 1] - X[i] < 0.01 && i > 0 && i < nx - 1 && slabC[k - 1] && slabC[k + 1];
+    const gy = Y[j + 1] - Y[j] < 0.01 && j > 0 && j < ny - 1 && slabC[k - nx] && slabC[k + nx];
     if (gx || gy) { slabC[k] = 1; bridged += (X[i + 1] - X[i]) * (Y[j + 1] - Y[j]); }
   }
   if (bridged > 0.5) W.push(`슬래브 사이 보 자리·좁은 틈 ${bridged.toFixed(1)} ㎡를 바닥으로 이어 계산했습니다(보 윗면도 바닥판의 일부).`);
@@ -1136,19 +1152,23 @@ function analyze(inp) {
         if (bk >= 0) { cellBeam[bk] += want; beamTot += want; } }
     }
   }
-  // 슬래브 물량: 모델 값이 있으면 그 값 + 보 자리로 이은 바닥(보 윗부분, 슬래브 두께만큼),
-  // 총량만 주어졌으면 총량 − 보, 아무것도 없으면 바닥 면적 × 두께
-  const Cslab = !cellBeam ? C
-    : inp.Cslab > 0 ? inp.Cslab + bridged * inp.t
-    : inp.C > 0 ? Math.max(0, inp.C - beamTot)
-    : totalArea * inp.t;
+  // 슬래브 물량(순수 슬래브): 모델 값 → 총량 − 보 → 바닥 면적 × 두께 순
+  const slabPart = inp.Cslab > 0 ? inp.Cslab : (cellBeam && inp.C > 0) ? Math.max(0, inp.C - beamTot) : (cellBeam ? totalArea * inp.t : C);
+  // 보 물량(칸별): 슬래브 아래 보 + 보 자리로 이은 칸의 보 윗부분(슬래브 두께만큼)
+  const beamCell = new Float64Array(nx * ny);
+  for (let k = 0; k < nx * ny; k++) { if (!active[k]) continue; const i = k % nx, j = (k - i) / nx;
+    beamCell[k] = (cellBeam ? cellBeam[k] : 0) + (bridgedC[k] ? (X[i + 1] - X[i]) * (Y[j + 1] - Y[j]) * inp.t : 0); }
+  // 구획 계산 기준: 기본은 슬래브만(연구범위 문서 6장), inclBeam이면 보 포함
+  const useBeam = !!inp.inclBeam;
+  const cellVol = new Float64Array(nx * ny), cellVolAll = new Float64Array(nx * ny);
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const k = idx(i, j); if (!active[k]) continue;
+    const s = (X[i + 1] - X[i]) * (Y[j + 1] - Y[j]) / totalArea * slabPart;
+    cellVolAll[k] = s + beamCell[k]; cellVol[k] = useBeam ? cellVolAll[k] : s; }
   for (const u of units) {
-    u.cx = u.sx / u.area; u.cy = u.sy / u.area; u.vol = u.area / totalArea * Cslab;
-    if (cellBeam) for (const k of u.cells) u.vol += cellBeam[k];
+    u.cx = u.sx / u.area; u.cy = u.sy / u.area; u.vol = 0; u.volAll = 0;
+    for (const k of u.cells) { u.vol += cellVol[k]; u.volAll += cellVolAll[k]; }
   }
-  // 칸마다 물량(시공 기록의 조각 물량에 쓴다)
-  const cellVol = new Float64Array(nx * ny);
-  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const k = idx(i, j); if (active[k]) cellVol[k] = (X[i + 1] - X[i]) * (Y[j + 1] - Y[j]) / totalArea * Cslab + (cellBeam ? cellBeam[k] : 0); }
+  const Cslab = slabPart;
   const Ctot = units.reduce((a, u) => a + u.vol, 0);
   const lineKeyOf = e => (Math.abs(e.x1 - e.x2) < 1e-9 ? 'x' + e.x1.toFixed(3) : 'y' + e.y1.toFixed(3));
   const lineId = new Map();
@@ -1227,7 +1247,7 @@ function analyze(inp) {
     : Math.abs(b.c - x) <= TOL && y >= b.a - TOL && y <= b.b + TOL);
   return {
     E, W, poly, polys, xs, ys, cs, beams, gtol, lines, cutX, cutY, X, Y, nx, ny, inPoly, active, blockKind, cantCell, edges, unitOf, units, comps, linked,
-    totalArea, C: Ctot, Cslab, beamTot, cellVol, pieceOf, pieces, Cgiven: inp.C > 0, Nmin: Math.max(Math.ceil(Ctot / inp.P - 1e-9), units.filter(u => u.vol > inp.P / 2 + 1e-9).length), maxUnit, onBeam,
+    totalArea, C: Ctot, Call: units.reduce((a, u) => a + u.volAll, 0), inclBeam: useBeam, Cslab, beamTot, cellVol, pieceOf, pieces, Cgiven: inp.C > 0, Nmin: Math.max(Math.ceil(Ctot / inp.P - 1e-9), units.filter(u => u.vol > inp.P / 2 + 1e-9).length), maxUnit, onBeam,
     stats: { okN, ngN, why }, walls, openings, P: inp.P
   };
 }
@@ -2083,6 +2103,29 @@ function mergeAll(M, sols, P) {
   return out.filter(s => s.vol.length === nMin);
 }
 
+
+// ===== 구획안 평가 (연구범위 문서 13장 지표 + 제안한 비교 방법) =====
+// 물량 균형 = 하루 타설량이 가장 적은 날 ÷ 가장 많은 날, 이음 총길이 = 구역 경계 길이 합,
+// 비상중단선 커버율 = 멈출 자리가 확보된 트럭 구간 수 ÷ 필요한 구간 수 (모든 구역 합산)
+function planMetrics(M, s, P, cap, tieTol, dirMode) {
+  const D = packDays(M, s.z, s.vol, P, 150);
+  let need = 0, cov = 0; const stops = [];
+  for (let k = 0; k < s.vol.length; k++) { const sp = stopPlan(M, s.z, k, dirMode, cap, tieTol).best; stops.push(sp); need += sp.need; cov += sp.covered; }
+  const dv = D.vols.filter(v => v > 1e-9);
+  return { days: D.n, D, stops, balance: dv.length ? Math.min(...dv) / Math.max(...dv) : 1, joint: s.total, coverage: need ? cov / need : 1, need, cov };
+}
+// 단계별 비교: 일수 최소 → 지배당하는 안 제외 → 커버율(최고와 tolC 이내) → 이음(최단의 1+tolJ 이내) → 균형 최대
+function recommendPlan(list, tolC, tolJ) {
+  const minD = Math.min(...list.map(x => x.m.days));
+  const dom = (a, b) => b.m.balance >= a.m.balance - 1e-9 && b.m.joint <= a.m.joint + 1e-9 && b.m.coverage >= a.m.coverage - 1e-9 &&
+    (b.m.balance > a.m.balance + 1e-9 || b.m.joint < a.m.joint - 1e-9 || b.m.coverage > a.m.coverage + 1e-9);
+  list.forEach(a => { a.dominated = list.some(b => b !== a && b.m.days <= a.m.days && dom(a, b)); });
+  let c = list.filter(x => x.m.days === minD && !x.dominated); if (!c.length) c = list.filter(x => x.m.days === minD);
+  const maxC = Math.max(...c.map(x => x.m.coverage)); c = c.filter(x => x.m.coverage >= maxC - tolC - 1e-9);
+  const minJ = Math.min(...c.map(x => x.m.joint)); c = c.filter(x => x.m.joint <= minJ * (1 + tolJ) + 1e-9);
+  return c.reduce((a, b) => b.m.balance > a.m.balance + 1e-9 ? b : a);
+}
+
 function feasibilityScan(M, nFrom, nTo, tEach) {
   const out = [];
   for (let n = Math.max(1, nFrom); n <= Math.min(M.units.length, nTo); n++) {
@@ -2846,7 +2889,7 @@ function readInputs() {
     t: num('t'), C: num('C'), P: num('P'), N: num('N'),
     ratio: parseRatio($('#ratio').value), mult: num('mult'), defW: num('defW'), minCut: num('minCut'), cantMin: num('cantMin'), gridTol: num('gridTol'), minWallT: num('minWallT'),
     restarts: Math.max(10, Math.min(500, num('restarts') || 120)), cantExt: $('#cantExt').checked,
-    Cslab: state.ifcCslab || 0, truck: num('truck') > 0 ? num('truck') : 6, tieTol: num('tieTol') >= 0 ? num('tieTol') : 0.5, pourDir: $('#pourDir').value, linkDetached: $('#linkDetached').checked
+    Cslab: state.ifcCslab || 0, inclBeam: $('#inclBeam').checked, tolC: (num('tolC') >= 0 ? num('tolC') : 10) / 100, tolJ: (num('tolJ') >= 0 ? num('tolJ') : 10) / 100, truck: num('truck') > 0 ? num('truck') : 6, tieTol: num('tieTol') >= 0 ? num('tieTol') : 0.5, pourDir: $('#pourDir').value, linkDetached: $('#linkDetached').checked
   };
   inp.slab = inp.slabs[0] || [];
   if (!(inp.P > 0)) errs.push('1일 최대 타설량 P를 0보다 큰 값으로 입력하세요.');
@@ -2968,7 +3011,7 @@ function compute() {
     } else {
       // 맞닿은 구역을 합쳐도 되면 합쳐 더 적은 구역으로 정리
       if (auto && R.sols.length) { R = { ...R, sols: mergeAll(M, R.sols, inp.P) }; N = R.sols[0].vol.length; state.N = N; }
-      state.R = R; sortSols(null);
+      state.R = R; evaluatePlans(); sortSols(null);
       const s = R.sols[0];
       const lead = auto
         ? (N > M.Nmin
@@ -3002,14 +3045,37 @@ function layerOn(n) { return document.querySelector(`[data-layer=${n}]`).checked
 
 function setStage(s) { document.body.dataset.stage = s; }
 const altName = i => String.fromCharCode(65 + i) + '안';
-// 정렬: ① 가장 작은 구역 물량이 큰 순 ② 시공이음 길이 합이 작은 순 (동률이면 서로를 보조 기준으로)
-state.sortKey = 'min';
+// 구획안 평가: 지표 세 개(물량 균형·이음 총길이·중단선 커버율) + 단계별 비교 추천
+const pctS = v => (v * 100).toFixed(0) + '%';
+function metricsFor(s) {
+  const inp = state.inp, key = [inp.P, inp.truck, inp.tieTol, inp.pourDir, s.vol.join(',')].join('|');
+  if (s._mKey !== key) { s._m = planMetrics(state.M, s, inp.P, inp.truck, inp.tieTol, inp.pourDir); s._mKey = key; }
+  return s._m;
+}
+function evaluatePlans() {
+  if (!state.R || !state.R.sols.length) return;
+  const inp = state.inp, sols = state.R.sols;
+  sols.forEach((s, i) => { if (s._idx === undefined) s._idx = i; s._rec = false; });
+  const list = sols.map(s => ({ s, m: metricsFor(s) }));
+  const pick = recommendPlan(list, inp.tolC, inp.tolJ);
+  list.forEach(x => { x.s._dom = x.dominated; });
+  pick.s._rec = true;
+  const all = list.filter(x => x.m.days === pick.m.days);
+  pick.s._why = `중단선 커버율 ${pctS(pick.m.coverage)}(최고 ${pctS(Math.max(...all.map(x => x.m.coverage)))}에서 ${Math.round(inp.tolC * 100)}%p 이내), 이음 ${f1(pick.m.joint)} m(최단 ${f1(Math.min(...all.filter(x => x.m.coverage >= Math.max(...all.map(y => y.m.coverage)) - inp.tolC - 1e-9).map(x => x.m.joint)))} m의 ${Math.round(inp.tolJ * 100)}% 이내)인 안 중 물량 균형이 가장 높음(${pctS(pick.m.balance)})`;
+  // 허용폭을 5·10·20%로 바꿔도 같은 안이 추천되는지
+  const picks = [0.05, 0.1, 0.2].map(t => recommendPlan(list.map(x => ({ ...x })), t, t).s);
+  state.sens = { same: picks.every(p => p === picks[0]), picks };
+}
+state.sortKey = 'rec';
 function sortSols(keep) {
   if (!state.R || !state.R.sols.length) return;
-  const cur = keep || state.R.sols[state.sel];
-  const f = state.sortKey === 'joint'
-    ? (a, b) => a.total - b.total || b.minVol - a.minVol
-    : (a, b) => b.minVol - a.minVol || a.total - b.total;
+  const cur = keep || state.R.sols[state.sel], m = s => metricsFor(s), o = s => s._idx || 0;
+  const f = {
+    rec: (a, b) => (b._rec - a._rec) || ((a._dom ? 1 : 0) - (b._dom ? 1 : 0)) || o(a) - o(b),
+    bal: (a, b) => m(b).balance - m(a).balance || o(a) - o(b),
+    joint: (a, b) => m(a).joint - m(b).joint || o(a) - o(b),
+    cov: (a, b) => m(b).coverage - m(a).coverage || o(a) - o(b)
+  }[state.sortKey] || ((a, b) => o(a) - o(b));
   state.R.sols.sort(f);
   state.sel = keep ? Math.max(0, state.R.sols.indexOf(cur)) : 0;
 }
@@ -3025,7 +3091,8 @@ function renderHead() {
   const zonesTxt = !sol ? '' : `${D.remaining ? '남은 ' : ''}${nZ}개 구역 · ` + (D.n === nZ ? '하루 1구역' : `떨어진 구역은 같은 날 (하루 최대 ${perDay}구역)`);
   const q = state.quiet || [];
   const warns = q.length ? `<details class="warns"><summary>주의 ${q.length}</summary><ul>${q.map(t => `<li>${t}</li>`).join('')}</ul></details>` : '';
-  const kpi = sol ? [['총 타설량', f1(M.C), '㎥'], ['가장 큰 구역', f1(sol.maxVol), '㎥'], ['물량 불균형', (sol.maxDev * 100).toFixed(0), '%']] : [['총 타설량', f1(M.C), '㎥']];
+  const MT = sol ? metricsFor(sol) : null;
+  const kpi = sol ? [[M.inclBeam ? '총 타설량 (보 포함)' : '총 타설량 (슬래브)', f1(M.C), '㎥'], ['물량 균형', Math.round(MT.balance * 100), '%'], ['이음 총길이', f1(MT.joint), 'm'], ['중단선 커버율', Math.round(MT.coverage * 100), '%']] : [['총 타설량', f1(M.C), '㎥']];
   $('#resHead').innerHTML = `
     <div class="rh-top"><div class="rh-cond">${cond}</div>
       <div class="rh-act">${warns}<button type="button" class="rb-btn" id="openDrawer">조건 바꾸기</button></div></div>
@@ -3134,28 +3201,34 @@ function renderAll(fresh) {
   $('#zoneBlock').hidden = !sol; $('#altBlock').hidden = !sol;
   document.querySelector('.md').classList.toggle('no-list', !sol);
   if (sol) {
+    const VA = sol.vol.map(() => 0); M.units.forEach((un, q) => { VA[sol.z[q]] += un.volAll; });
+    const vaCell = k => M.inclBeam ? '' : `<td class="${VA[k] > inp.P + 1e-6 ? 'over' : ''}">${f1(VA[k])} ㎥</td>`;
     const DD = daysFor(sol), SP = stopsFor(sol), rec = state.rec, DIRN = { 'X+': 'X+ →', 'X-': 'X− ←', 'Y+': 'Y+ ↑', 'Y-': 'Y− ↓' };
     const doneZone = k => rec && sol.z.every((z, u) => z !== k || rec.done[u]);
-    $('#zoneTable').innerHTML = `<thead><tr><th>구역</th><th title="서로 맞닿지 않는 구역은 하루 한도 안에서 같은 날 칩니다">타설일</th><th>타설량</th><th>한도 대비</th><th title="레미콘 대수 = 구역 물량 ÷ 트럭 적재량(올림)">레미콘</th><th title="트럭 한 대분마다 멈출 수 있는 자리가 있는지 (필요 = 차량 − 1)">비상 중단선</th><th title="타설 진행 방향">방향</th></tr></thead><tbody>` +
+    $('#zoneTable').innerHTML = `<thead><tr><th>구역</th><th title="서로 맞닿지 않는 구역은 하루 한도 안에서 같은 날 칩니다">타설일</th><th>타설량${M.inclBeam ? '' : ' (슬래브)'}</th>${M.inclBeam ? '' : '<th title="보까지 넣은 실제로 붓는 양">보 포함 실제</th>'}<th>한도 대비</th><th title="레미콘 대수 = 구역 물량 ÷ 트럭 적재량(올림)">레미콘</th><th title="트럭 한 대분마다 멈출 수 있는 자리가 있는지 (필요 = 차량 − 1)">비상 중단선</th><th title="타설 진행 방향">방향</th></tr></thead><tbody>` +
       sol.vol.map((v, k) => {
         const sp = SP[k]; const empty = sp.segments.filter(s => !s.rep);
         const why = empty.map(s => `${s.lo}~${s.hi}㎥: ${s.cause.type === 'big' ? `큰 단위(${f1(s.cause.vol)} ㎥)가 구간을 덮음` : '멈출 수 있는 자리 없음(남은 쪽 갈라짐·꺾임)'}`).join('\n');
         const tag = sp.need === 0 ? '<span class="sf ok">필요 없음</span>' : sp.safe ? '<span class="sf ok">안전</span>' : `<span class="sf weak" title="${esc(why)}">취약</span>`;
-        if (doneZone(k)) return `<tr class="donerow"><td><span class="sw" style="background:#C5CBD1"></span>C${k + 1} <small class="day">완료</small></td><td>—</td><td>${f1(v)} ㎥</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>`;
-        return `<tr class="${doneZone(k) ? 'donerow' : ''}"><td><span class="sw" style="background:${zColor(k)}"></span>C${k + 1}${doneZone(k) ? ' <small class="day">완료</small>' : ''}</td><td>${DD.dayOf[k] + 1}일차</td><td>${f1(v)} ㎥</td><td class="${v > inp.P ? 'over' : ''}"><span class="gauge"><i style="width:${Math.min(100, v / inp.P * 100)}%"></i></span>${(v / inp.P * 100).toFixed(0)}%</td><td>${sp.trucks}대</td><td>${sp.covered}/${sp.need} ${tag}</td><td>${DIRN[sp.dir]}</td></tr>`;
+        if (doneZone(k)) return `<tr class="donerow"><td><span class="sw" style="background:#C5CBD1"></span>C${k + 1} <small class="day">완료</small></td><td>—</td><td>${f1(v)} ㎥</td>${vaCell(k)}<td>—</td><td>—</td><td>—</td><td>—</td></tr>`;
+        return `<tr class="${doneZone(k) ? 'donerow' : ''}"><td><span class="sw" style="background:${zColor(k)}"></span>C${k + 1}${doneZone(k) ? ' <small class="day">완료</small>' : ''}</td><td>${DD.dayOf[k] + 1}일차</td><td>${f1(v)} ㎥</td>${vaCell(k)}<td class="${v > inp.P ? 'over' : ''}"><span class="gauge"><i style="width:${Math.min(100, v / inp.P * 100)}%"></i></span>${(v / inp.P * 100).toFixed(0)}%</td><td>${sp.trucks}대</td><td>${sp.covered}/${sp.need} ${tag}</td><td>${DIRN[sp.dir]}</td></tr>`;
       }).join('') +
-      `<tr class="sum"><td>합계</td><td>${DD.n}일</td><td>${f1(sol.vol.reduce((a, b) => a + b, 0))} ㎥</td><td colspan="4">이음 ${f1(sol.total)} m · 슬래브 + 슬래브 아래 보</td></tr></tbody>`;
+      `<tr class="sum"><td>합계</td><td>${DD.n}일</td><td>${f1(sol.vol.reduce((a, b) => a + b, 0))} ㎥</td>${M.inclBeam ? '' : `<td>${f1(M.Call)} ㎥</td>`}<td colspan="4">이음 ${f1(sol.total)} m · ${M.inclBeam ? '슬래브 + 슬래브 아래 보' : '구획 계산은 슬래브만'}</td></tr></tbody>`;
+    const overZ = M.inclBeam ? [] : VA.map((v, k) => [k, v]).filter(([k, v]) => v > inp.P + 1e-6 && !doneZone(k));
+    $('#beamNote').textContent = overZ.length ? `보까지 넣은 실제 타설량이 하루 한도(${inp.P} ㎥)를 넘는 구역: ${overZ.map(([k, v]) => `C${k + 1} ${f1(v)} ㎥`).join(', ')}. 보는 슬래브와 한 번에 치므로, 레미콘 공급능력에 맞는지 확인하세요(KCS 14 20 10: 시공구획은 공급능력·이어치기 허용시간에 맞춰 정함).` : '';
     const rp = rebarPts(M, sol).length;
-    $('#rebarNote').textContent = rp ? `▲ 작은보가 붙은 큰보를 자르는 이음 ${rp}곳 — 시공이음을 지나는 경사 인장철근으로 전단 보강이 필요합니다 (KCS 14 20 10 3.6.5(1)).` : '';
+    $('#rebarNote').textContent = rp ? `▲ 기준 요구사항 안내 (KCS 14 20 10 3.6.5(1)): 작은보가 붙은 큰보를 자르는 이음 ${rp}곳은 시공이음을 지나는 경사 인장철근으로 전단 보강해야 합니다. 보강 설계는 이 프로그램의 범위 밖입니다.` : '';
     $('#candCount').textContent = `${state.R.sols.length}`;
-    $('#cands').innerHTML = state.R.sols.map((s, i) => `<button type="button" class="cand" data-i="${i}" aria-pressed="${i === state.sel}">
-        <span class="ct">${altName(i)}${i === 0 ? '<i class="rec">1순위</i>' : ''}<small>${daysFor(s).n}일 · ${s.vol.length}구역</small></span>
+    $('#cands').innerHTML = state.R.sols.map((s, i) => `<button type="button" class="cand${s._dom ? ' dom' : ''}" data-i="${i}" aria-pressed="${i === state.sel}"${s._dom ? ' title="다른 안보다 세 지표가 모두 같거나 낮음"' : ''}>
+        <span class="ct">${altName(i)}${s._rec ? '<i class="rec" title="제안 기준(커버율 → 이음 → 균형)에 따른 추천">추천</i>' : ''}<small>${daysFor(s).n}일 · ${s.vol.length}구역</small></span>
         ${drawMini(M, s)}
-        <span class="cm"><span title="가장 작은 구역의 물량"><em>최소 구역</em><strong>${Math.round(s.minVol)}<u>㎥</u></strong></span><span title="시공이음(스톱엔드) 길이 합"><em>이음 합</em><strong>${Math.round(s.total)}<u>m</u></strong></span></span>
+        <span class="cm cm3"><span title="하루 타설량이 가장 적은 날 ÷ 가장 많은 날"><em>균형</em><strong>${Math.round(metricsFor(s).balance * 100)}<u>%</u></strong></span><span title="시공이음 총길이"><em>이음</em><strong>${Math.round(s.total)}<u>m</u></strong></span><span title="멈출 자리가 확보된 트럭 구간 ÷ 필요한 구간"><em>커버</em><strong>${Math.round(metricsFor(s).coverage * 100)}<u>%</u></strong></span></span>
       </button>`).join('');
     $('#altTable').innerHTML = `<thead><tr><th>후보</th><th>구역(일)</th><th>물량 불균형</th><th>최대 구역 (㎥)</th><th>최소 구역 (㎥)</th><th>총 이음 (m)</th></tr></thead><tbody>` +
-      state.R.sols.map((s, i) => `<tr data-i="${i}" class="${i === state.sel ? 'sel' : ''}" tabindex="0"><td>${altName(i)}${i === 0 ? ' 추천' : ''}</td><td>${s.N}</td><td>${(s.maxDev * 100).toFixed(1)}%</td><td>${f1(s.maxVol)}</td><td>${f1(s.minVol)}</td><td>${f1(s.total)}</td></tr>`).join('') + '</tbody>';
-    $('#detailTitle').innerHTML = `${altName(state.sel)}${state.sel === 0 ? '<i class="rec">1순위</i>' : ''}`;
+      state.R.sols.map((s, i) => `<tr data-i="${i}" class="${i === state.sel ? 'sel' : ''}" tabindex="0"><td>${altName(i)}${s._rec ? ' 추천' : ''}</td><td>${s.N}</td><td>${(s.maxDev * 100).toFixed(1)}%</td><td>${f1(s.maxVol)}</td><td>${f1(s.minVol)}</td><td>${f1(s.total)}</td></tr>`).join('') + '</tbody>';
+    $('#detailTitle').innerHTML = `${altName(state.sel)}${sol._rec ? '<i class="rec">제안 기준 추천</i>' : ''}${sol._dom ? '<i class="dom-tag">모든 지표가 다른 안보다 낮음</i>' : ''}`;
+    $('#recWhy').textContent = sol._rec ? '추천 이유: ' + sol._why : '';
+    $('#sensNote').textContent = state.sens ? (state.sens.same ? '허용폭을 5·10·20%로 바꿔도 같은 안이 추천됩니다.' : '허용폭에 따라 추천안이 달라집니다: ' + [5, 10, 20].map((t, q) => `${t}% → ${altName(state.R.sols.indexOf(state.sens.picks[q]))}`).join(', ')) : '';
   }
   $('#detailTitle').hidden = !sol;
   renderBasis(M);
@@ -3421,8 +3494,8 @@ function csvText() {
   sol.vol.forEach((v, k) => lines.push(`C${k + 1},${f1(v)},${f1(sol.area[k])},${(v / state.inp.P * 100).toFixed(0)},${f1(sol.joint[k])}`));
   lines.push(`합계,${f1(sol.vol.reduce((a, b) => a + b, 0))},${f1(state.M.totalArea)},,${f1(sol.total)}`);
   lines.unshift(`선택한 안,${altName(state.sel)}`);
-  lines.push('', '안,구역수(일),물량불균형(%),최대구역(m3),최소구역(m3),총이음(m),특징');
-  state.R.sols.forEach((s, i) => lines.push(`${altName(i)},${s.N},${(s.maxDev * 100).toFixed(1)},${f1(s.maxVol)},${f1(s.minVol)},${f1(s.total)},${(s.tags || []).join(' / ')}`));
+  lines.push('', '안,일수,구역수,물량균형(%),이음총길이(m),중단선커버율(%),판정');
+  state.R.sols.forEach((s, i) => { const m = metricsFor(s); lines.push(`${altName(i)},${m.days},${s.vol.length},${(m.balance * 100).toFixed(0)},${f1(m.joint)},${(m.coverage * 100).toFixed(0)},${s._rec ? '제안 기준 추천' : s._dom ? '모든 지표가 다른 안보다 낮음' : '비교 후보'}`); });
   lines.push('', '판정,개수,근거');
   basisRows(state.M).forEach(r => lines.push(`${r[0]},${r[1]},"${r[2]}"`));
   return lines.join('\n');
@@ -3564,7 +3637,8 @@ function recApply() {
   const ev = recWithVol(() => evaluate(M, res.z, K, M.C / K));
   let poured = 0; for (const [u, left] of R0.partial || []) poured += M.units[u].vol - left;
   if (poured > 1e-9) { const doneKs = [...new Set(res.z.filter((k, u) => R0.done[u]))]; if (doneKs.length) ev.vol[Math.max(...doneKs)] += poured; }
-  state.R.sols.splice(state.sel, 1, { z: res.z, ...ev, N: K, tags: [] });
+  state.R.sols.splice(state.sel, 1, { z: res.z, ...ev, N: K, tags: [], _idx: state.R.sols[state.sel]._idx });
+  evaluatePlans();
   R0.versions.push({ label: `v${R0.versions.length + 1} ${R0.day - 1}일차 후 ${res.kind === 'min' ? '최소 변경' : '전체 재분할'}`, z: Array.from(res.z), at: new Date().toLocaleString('ko-KR') });
   R0.result = null;
   try { localStorage.setItem(recKey(), JSON.stringify(recDump())); } catch (e) {}
