@@ -990,14 +990,22 @@ function analyze(inp) {
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) if (pipAny((X[i] + X[i + 1]) / 2, (Y[j] + Y[j + 1]) / 2)) slabC[idx(i, j)] = 1;
   const nearSlab = k => { const i = k % nx, j = (k - i) / nx; return slabC[k] || (i > 0 && slabC[k - 1]) || (i < nx - 1 && slabC[k + 1]) || (j > 0 && slabC[k - nx]) || (j < ny - 1 && slabC[k + nx]); };
   let bridged = 0;
-  for (let pass = 0; pass < 2; pass++) for (const b of beams) {
-    const w = b.w > 0 ? b.w : inp.defW, hor = b.o === 'h';
-    const x0 = hor ? b.a : b.c - w / 2, x1 = hor ? b.b : b.c + w / 2, y0 = hor ? b.c - w / 2 : b.a, y1 = hor ? b.c + w / 2 : b.b;
-    const cells = [];
-    for (let j = 0; j < ny; j++) { const cy = (Y[j] + Y[j + 1]) / 2; if (cy < y0 || cy > y1) continue;
-      for (let i = 0; i < nx; i++) { const cx = (X[i] + X[i + 1]) / 2; if (cx >= x0 && cx <= x1) cells.push(idx(i, j)); } }
-    if (!cells.some(nearSlab)) continue;
-    for (const k of cells) if (!slabC[k]) { slabC[k] = 1; bridged += (X[k % nx + 1] - X[k % nx]) * (Y[(k - k % nx) / nx + 1] - Y[(k - k % nx) / nx]); }
+  // 보 자리 중 '보를 가로지르는 방향으로 양쪽 모두 슬래브'인 틈만 메운다. 슬래브 밖으로 나온 보 자리는 채우지 않는다
+  // (채우면 바깥에 가는 띠가 생겨 캔틸레버로 잡히거나 절단선이 슬래브 끝까지 못 간다)
+  const ci = (v, A) => { let lo = 0, hi = A.length - 2; while (lo < hi) { const m = (lo + hi + 1) >> 1; if ((A[m] + A[m + 1]) / 2 <= v) lo = m; else hi = m - 1; } return lo; };
+  for (const b of beams) {
+    const w = (b.w > 0 ? b.w : inp.defW) + 0.05, hor = b.o === 'h';
+    const A = hor ? X : Y, B = hor ? Y : X, nA = hor ? nx : ny, nB = hor ? ny : nx;
+    const at = (a, bb) => hor ? idx(a, bb) : idx(bb, a);
+    // 보를 가로지르는 방향의 칸 범위
+    let b0 = -1, b1 = -1;
+    for (let q = 0; q < nB; q++) { const m = (B[q] + B[q + 1]) / 2; if (m >= b.c - w / 2 && m <= b.c + w / 2) { if (b0 < 0) b0 = q; b1 = q; } }
+    if (b0 < 0 || b0 === 0 || b1 >= nB - 1) continue;
+    for (let a = 0; a < nA; a++) {
+      const m = (A[a] + A[a + 1]) / 2; if (m < b.a - 1e-6 || m > b.b + 1e-6) continue;
+      if (!slabC[at(a, b0 - 1)] || !slabC[at(a, b1 + 1)]) continue; // 양쪽이 슬래브일 때만
+      for (let q = b0; q <= b1; q++) { const k = at(a, q); if (!slabC[k]) { slabC[k] = 1; bridged += (X[k % nx + 1] - X[k % nx]) * (Y[(k - k % nx) / nx + 1] - Y[(k - k % nx) / nx]); } }
+    }
   }
   // 모델링 오차로 생긴 12 cm 미만 틈은 양쪽이 바닥이면 메운다
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
@@ -2042,6 +2050,39 @@ function packDays(M, z, vol, P, budgetMs) {
   return { days: best.map(g => g.ks), vols: best.map(g => g.v), n: best.length, dayOf, lower };
 }
 
+
+// ===== 구획 정리: 맞닿은 두 구역을 합쳐도 하루 한도·규칙을 지키면 합친다 =====
+// 탐색은 구역 수를 먼저 정하고 나누기 때문에, 더 적은 구역 수로도 되는 안을 놓칠 수 있다. 결과를 다듬어 불필요한 이음을 없앤다.
+function mergeZones(M, s, P) {
+  const U = M.units; let z = Array.from(s.z), vol = s.vol.slice(), changed = false;
+  const bentAny = zz => { for (let j = 1; j < M.ny; j++) for (let i = 1; i < M.nx; i++) if (bendAtNode(M, zz, j * (M.nx + 1) + i)) return true; return false; };
+  for (let guard = 0; guard < 50; guard++) {
+    const pairs = new Map();
+    U.forEach((u, i) => { for (const [v, l] of u.nb) if (z[v] !== z[i]) { const a = Math.min(z[i], z[v]), b = Math.max(z[i], z[v]), k = a + ',' + b; pairs.set(k, (pairs.get(k) || 0) + l); } });
+    // 합친 물량이 작은 짝부터 (구역 크기 균형 유지), 같으면 없어지는 이음이 긴 짝부터
+    const cand = [...pairs].map(([k, len]) => { const [a, b] = k.split(',').map(Number); return { a, b, v: vol[a] + vol[b], len }; })
+      .filter(p => p.v <= P + 1e-6).sort((p, q) => p.v - q.v || q.len - p.len);
+    let done = false;
+    for (const p of cand) {
+      const zz = z.map(q => q === p.b ? p.a : q);
+      if (bentAny(zz)) continue;
+      z = zz; vol[p.a] += vol[p.b]; vol[p.b] = 0; changed = true; done = true; break;
+    }
+    if (!done) break;
+  }
+  if (!changed) return s;
+  // 번호를 0부터 다시 매기고 평가
+  const ids = [...new Set(z)].sort((a, b) => a - b), map = new Map(ids.map((k, i) => [k, i]));
+  const nz = z.map(k => map.get(k)), N = ids.length;
+  return { ...s, z: nz, ...evaluate(M, nz, N, M.C / N), N, merged: true };
+}
+function mergeAll(M, sols, P) {
+  const out = [], seen = new Set();
+  for (const s of sols) { const m = mergeZones(M, s, P), key = m.z.join(','); if (!seen.has(key)) { seen.add(key); out.push(m); } }
+  const nMin = Math.min(...out.map(s => s.vol.length));
+  return out.filter(s => s.vol.length === nMin);
+}
+
 function feasibilityScan(M, nFrom, nTo, tEach) {
   const out = [];
   for (let n = Math.max(1, nFrom); n <= Math.min(M.units.length, nTo); n++) {
@@ -2925,6 +2966,8 @@ function compute() {
       if (auto) { const sg = suggestP(M); msgs.unshift(['err', lead + suggestTxt(sg)]); }
       else msgs.unshift(['err', `${lead} 구역 수를 늘려도 선택지가 넓어집니다.${more} <button type="button" class="inline-btn" data-n="${N + 1}">${N + 1}구역으로 다시 계산</button>`]);
     } else {
+      // 맞닿은 구역을 합쳐도 되면 합쳐 더 적은 구역으로 정리
+      if (auto && R.sols.length) { R = { ...R, sols: mergeAll(M, R.sols, inp.P) }; N = R.sols[0].vol.length; state.N = N; }
       state.R = R; sortSols(null);
       const s = R.sols[0];
       const lead = auto
@@ -2976,9 +3019,10 @@ function renderHead() {
   const cond = [inp.floor || '층', `1일 ${inp.P} ㎥`, state.auto ? '구역 수 자동' : `${state.N}개 구역 지정`].map(esc).join('<i>·</i>');
   let badge = '';
   const D = daysFor(sol), lowD = Math.max(1, Math.ceil(M.C / inp.P - 1e-9));
-  if (sol) badge = D.n > lowD ? `<span class="rh-badge warn">규칙 때문에 최소보다 ${D.n - lowD}일 더</span>` : '<span class="rh-badge ok">물량상 최소 일수</span>';
-  const perDay = D ? Math.max(...D.days.map(d => d.length)) : 1;
-  const zonesTxt = !sol ? '' : D.n === sol.vol.length ? `${sol.vol.length}개 구역 · 하루 1구역` : `${sol.vol.length}개 구역 · 떨어진 구역은 같은 날 (하루 최대 ${perDay}구역)`;
+  if (sol && !D.remaining) badge = D.n > lowD ? `<span class="rh-badge warn">규칙 때문에 최소보다 ${D.n - lowD}일 더</span>` : '<span class="rh-badge ok">물량상 최소 일수</span>';
+  const perDay = D && D.days.length ? Math.max(...D.days.map(d => d.length)) : 1;
+  const nZ = !sol ? 0 : D.remaining ? D.days.reduce((a, d) => a + d.length, 0) : sol.vol.length;
+  const zonesTxt = !sol ? '' : `${D.remaining ? '남은 ' : ''}${nZ}개 구역 · ` + (D.n === nZ ? '하루 1구역' : `떨어진 구역은 같은 날 (하루 최대 ${perDay}구역)`);
   const q = state.quiet || [];
   const warns = q.length ? `<details class="warns"><summary>주의 ${q.length}</summary><ul>${q.map(t => `<li>${t}</li>`).join('')}</ul></details>` : '';
   const kpi = sol ? [['총 타설량', f1(M.C), '㎥'], ['가장 큰 구역', f1(sol.maxVol), '㎥'], ['물량 불균형', (sol.maxDev * 100).toFixed(0), '%']] : [['총 타설량', f1(M.C), '㎥']];
@@ -2986,14 +3030,24 @@ function renderHead() {
     <div class="rh-top"><div class="rh-cond">${cond}</div>
       <div class="rh-act">${warns}<button type="button" class="rb-btn" id="openDrawer">조건 바꾸기</button></div></div>
     <div class="rh-main">
-      <div class="rh-title">${sol ? `<div class="rh-days"><b>${D.n}</b><span>일</span></div><div class="rh-sub"><span class="rh-lbl">타설 계획</span><span class="rh-zones">${zonesTxt}</span>${badge}</div>` : '<div class="rh-sub"><span class="rh-fail">구획할 수 없음</span><span class="rh-zones">아래 안내의 버튼으로 조건을 바꿔 보세요.</span></div>'}</div>
+      <div class="rh-title">${sol ? `<div class="rh-days"><b>${D.n}</b><span>일</span></div><div class="rh-sub"><span class="rh-lbl">${D.remaining ? '남은 타설' : '타설 계획'}</span><span class="rh-zones">${zonesTxt}</span>${badge}</div>` : '<div class="rh-sub"><span class="rh-fail">구획할 수 없음</span><span class="rh-zones">아래 안내의 버튼으로 조건을 바꿔 보세요.</span></div>'}</div>
       <dl class="res-kpis">${kpi.map(([a, b, c]) => `<div${a === '물량 불균형' ? ` title="가장 치우친 구역이 평균보다 ${b}% 차이 남 (0%면 모든 날 물량이 같음)"` : ''}><dt>${a}</dt><dd>${b}<small>${c}</small></dd></div>`).join('')}</dl>
     </div>`;
 }
 function daysFor(sol) {
   if (!sol) return null;
-  const key = state.inp.P + '|' + sol.vol.join(',');
-  if (sol._daysKey !== key) { sol._days = packDays(state.M, sol.z, sol.vol, state.inp.P, 200); sol._daysKey = key; }
+  // 시공 기록 중이면 이미 다 친 구역은 일정에서 빼고 남은 구역만 묶는다
+  const R0 = state.rec, doneK = new Set();
+  if (R0) sol.vol.forEach((v, k) => { if (sol.z.every((z, u) => z !== k || R0.done[u])) doneK.add(k); });
+  const key = state.inp.P + '|' + sol.vol.join(',') + '|' + [...doneK].join(',');
+  if (sol._daysKey !== key) {
+    const keep = sol.vol.map((v, k) => k).filter(k => !doneK.has(k)), map = new Map(keep.map((k, i) => [k, i]));
+    const zs = sol.z.map(k => map.has(k) ? map.get(k) : -1), vs = keep.map(k => sol.vol[k]);
+    const r = keep.length ? packDays(state.M, zs, vs, state.inp.P, 200) : { days: [], vols: [], n: 0, dayOf: [] };
+    const dayOf = sol.vol.map((v, k) => map.has(k) ? r.dayOf[map.get(k)] : -1);
+    sol._days = { ...r, dayOf, days: r.days.map(d => d.map(i => keep[i])), remaining: !!R0 && doneK.size > 0 };
+    sol._daysKey = key;
+  }
   return sol._days;
 }
 function rebarPts(M, sol) {
